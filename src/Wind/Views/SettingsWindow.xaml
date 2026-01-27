@@ -6,7 +6,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         mc:Ignorable="d"
         Title="Settings - Wind"
-        Height="500" Width="600"
+        Height="600" Width="650"
         WindowStartupLocation="CenterOwner"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica">
@@ -21,16 +21,83 @@
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24">
+                <!-- Startup Section -->
+                <TextBlock Text="Startup" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16"/>
+
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                        CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Run at Windows Startup" FontWeight="SemiBold"/>
+                            <TextBlock Text="Start Wind automatically when Windows starts" FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding RunAtWindowsStartup, Mode=TwoWay}"/>
+                    </Grid>
+                </Border>
+
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                        CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Launch Applications on Start" FontWeight="SemiBold"/>
+                                <TextBlock Text="Applications to launch when Wind starts" FontSize="12"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <ui:Button Icon="{ui:SymbolIcon Add24}"
+                                          Command="{Binding AddStartupApplicationCommand}"
+                                          ToolTip="Add Application" Margin="0,0,4,0"/>
+                                <ui:Button Icon="{ui:SymbolIcon Delete24}"
+                                          Command="{Binding RemoveStartupApplicationCommand}"
+                                          IsEnabled="{Binding SelectedStartupApplication, Converter={StaticResource NotNullConverter}}"
+                                          ToolTip="Remove Selected"/>
+                            </StackPanel>
+                        </Grid>
+                        <ListBox ItemsSource="{Binding StartupApplications}"
+                                 SelectedItem="{Binding SelectedStartupApplication}"
+                                 MinHeight="80" MaxHeight="150"
+                                 Margin="0,12,0,0"
+                                 Background="Transparent"
+                                 BorderThickness="1"
+                                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="4">
+                                        <ui:SymbolIcon Symbol="Apps24" Margin="0,0,8,0"/>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Path}" FontSize="11"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="450"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+
                 <!-- Appearance Section -->
-                <TextBlock Text="Appearance" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                <TextBlock Text="Appearance" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"/>
 
                 <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                         CornerRadius="8" Padding="16" Margin="0,0,0,8">
                     <StackPanel>
                         <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <RadioButton Content="Light" GroupName="Theme" Margin="0,4"/>
-                        <RadioButton Content="Dark" GroupName="Theme" IsChecked="True" Margin="0,4"/>
-                        <RadioButton Content="System Default" GroupName="Theme" Margin="0,4"/>
+                        <RadioButton Content="Light" GroupName="Theme" Margin="0,4"
+                                     IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Light}"/>
+                        <RadioButton Content="Dark" GroupName="Theme" Margin="0,4"
+                                     IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Dark}"/>
                     </StackPanel>
                 </Border>
 
@@ -49,7 +116,7 @@
                             <TextBlock Text="Automatically save session on exit" FontSize="12"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1" IsChecked="True"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoSaveSession, Mode=TwoWay}"/>
                     </Grid>
                 </Border>
 
@@ -65,7 +132,7 @@
                             <TextBlock Text="Restore last session when Wind starts" FontSize="12"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1" IsChecked="True"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding RestoreSessionOnStartup, Mode=TwoWay}"/>
                     </Grid>
                 </Border>
 

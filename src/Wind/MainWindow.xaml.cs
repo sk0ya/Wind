@@ -7,6 +7,7 @@ using Wind.Interop;
 using Wind.Models;
 using Wind.Services;
 using Wind.ViewModels;
+using Wind.Views;
 
 namespace Wind;
 
@@ -133,6 +134,27 @@ public partial class MainWindow : Window
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            // Double-click to maximize/restore
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
+        else
+        {
+            // Drag to move
+            DragMove();
+        }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var settingsWindow = App.GetService<SettingsWindow>();
+        settingsWindow.Owner = this;
+        settingsWindow.ShowDialog();
     }
 
     private void TabItem_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)

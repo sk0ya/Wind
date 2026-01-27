@@ -96,7 +96,8 @@
             </Grid.RowDefinitions>
 
             <!-- Title Bar with Tabs -->
-            <Grid Grid.Row="0" Background="{DynamicResource ApplicationBackgroundBrush}">
+            <Grid Grid.Row="0" Background="{DynamicResource ApplicationBackgroundBrush}"
+                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -105,8 +106,7 @@
                 <!-- Tabs Area -->
                 <ScrollViewer Grid.Column="0"
                               HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Disabled"
-                              WindowChrome.IsHitTestVisibleInChrome="True">
+                              VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal">
                         <!-- Tabs -->
                         <ItemsControl ItemsSource="{Binding Tabs}">
@@ -120,6 +120,7 @@
                                     <Border Style="{StaticResource TabItemStyle}"
                                             Height="36"
                                             MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
+                                            WindowChrome.IsHitTestVisibleInChrome="True"
                                             Tag="{Binding}">
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <Image Source="{Binding Icon}" Width="16" Height="16"
@@ -192,6 +193,9 @@
 
                 <!-- Window Control Buttons -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Style="{StaticResource TitleBarButtonStyle}" Click="SettingsButton_Click" ToolTip="Settings">
+                        <ui:SymbolIcon Symbol="Settings24" FontSize="12"/>
+                    </Button>
                     <Button Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click">
                         <ui:SymbolIcon Symbol="Subtract24" FontSize="10"/>
                     </Button>

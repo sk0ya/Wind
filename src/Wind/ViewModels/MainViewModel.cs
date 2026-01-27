@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows.Media;
 using Wind.Interop;
 using Wind.Models;
@@ -187,5 +188,50 @@ public partial class MainViewModel : ObservableObject
         _hotkeyManager.HotkeyPressed -= OnHotkeyPressed;
         _tabManager.ReleaseAllTabs();
         _hotkeyManager.Dispose();
+    }
+
+    public async Task EmbedStartupProcessesAsync(List<Process> processes)
+    {
+        if (processes.Count == 0) return;
+
+        // Wait for windows to be created
+        await Task.Delay(1500);
+
+        foreach (var process in processes)
+        {
+            try
+            {
+                if (process.HasExited) continue;
+
+                // Wait for main window handle
+                for (int i = 0; i < 20; i++)
+                {
+                    process.Refresh();
+                    if (process.MainWindowHandle != IntPtr.Zero)
+                        break;
+                    await Task.Delay(250);
+                }
+
+                if (process.MainWindowHandle == IntPtr.Zero) continue;
+
+                // Find the window info
+                _windowManager.RefreshWindowList();
+                var windowInfo = _windowManager.AvailableWindows
+                    .FirstOrDefault(w => w.Handle == process.MainWindowHandle);
+
+                if (windowInfo != null)
+                {
+                    var tab = _tabManager.AddTab(windowInfo);
+                    if (tab != null)
+                    {
+                        StatusMessage = $"Added: {tab.Title}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to embed process: {ex.Message}");
+            }
+        }
     }
 }

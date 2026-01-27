@@ -1,0 +1,173 @@
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using Microsoft.Win32;
+using Wind.Models;
+
+namespace Wind.Services;
+
+public class SettingsManager
+{
+    private const string RegistryKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    private const string AppName = "Wind";
+
+    private readonly string _settingsFilePath;
+    private readonly JsonSerializerOptions _jsonOptions;
+    private AppSettings _settings;
+
+    public AppSettings Settings => _settings;
+
+    public SettingsManager()
+    {
+        var appDataPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Wind");
+
+        Directory.CreateDirectory(appDataPath);
+
+        _settingsFilePath = Path.Combine(appDataPath, "settings.json");
+
+        _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
+
+        _settings = LoadSettings();
+    }
+
+    private AppSettings LoadSettings()
+    {
+        if (!File.Exists(_settingsFilePath))
+            return new AppSettings();
+
+        try
+        {
+            var json = File.ReadAllText(_settingsFilePath);
+            return JsonSerializer.Deserialize<AppSettings>(json, _jsonOptions) ?? new AppSettings();
+        }
+        catch
+        {
+            return new AppSettings();
+        }
+    }
+
+    public void SaveSettings()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(_settings, _jsonOptions);
+            File.WriteAllText(_settingsFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to save settings: {ex.Message}");
+        }
+    }
+
+    public bool IsRunAtWindowsStartup()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, false);
+            return key?.GetValue(AppName) != null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public void SetRunAtWindowsStartup(bool enable)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
+            if (key == null) return;
+
+            if (enable)
+            {
+                var exePath = Environment.ProcessPath;
+                if (!string.IsNullOrEmpty(exePath))
+                {
+                    key.SetValue(AppName, $"\"{exePath}\"");
+                }
+            }
+            else
+            {
+                key.DeleteValue(AppName, false);
+            }
+
+            _settings.RunAtWindowsStartup = enable;
+            SaveSettings();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to set startup: {ex.Message}");
+        }
+    }
+
+    public void AddStartupApplication(string path, string arguments = "", string? name = null)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        var appName = name ?? Path.GetFileNameWithoutExtension(path);
+
+        if (_settings.StartupApplications.Any(a => a.Path.Equals(path, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        _settings.StartupApplications.Add(new StartupApplication
+        {
+            Path = path,
+            Arguments = arguments,
+            Name = appName
+        });
+
+        SaveSettings();
+    }
+
+    public void RemoveStartupApplication(string path)
+    {
+        var app = _settings.StartupApplications
+            .FirstOrDefault(a => a.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
+
+        if (app != null)
+        {
+            _settings.StartupApplications.Remove(app);
+            SaveSettings();
+        }
+    }
+
+    public List<Process> LaunchStartupApplications()
+    {
+        var processes = new List<Process>();
+
+        foreach (var app in _settings.StartupApplications)
+        {
+            try
+            {
+                if (!File.Exists(app.Path)) continue;
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = app.Path,
+                    Arguments = app.Arguments,
+                    UseShellExecute = true
+                };
+
+                var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    processes.Add(process);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to launch {app.Name}: {ex.Message}");
+            }
+        }
+
+        return processes;
+    }
+}
