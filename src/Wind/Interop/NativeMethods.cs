@@ -1,0 +1,142 @@
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace Wind.Interop;
+
+internal static class NativeMethods
+{
+    public const int GWL_STYLE = -16;
+    public const int GWL_EXSTYLE = -20;
+
+    public const uint WS_CHILD = 0x40000000;
+    public const uint WS_VISIBLE = 0x10000000;
+    public const uint WS_CAPTION = 0x00C00000;
+    public const uint WS_THICKFRAME = 0x00040000;
+    public const uint WS_MINIMIZEBOX = 0x00020000;
+    public const uint WS_MAXIMIZEBOX = 0x00010000;
+    public const uint WS_SYSMENU = 0x00080000;
+    public const uint WS_BORDER = 0x00800000;
+    public const uint WS_DLGFRAME = 0x00400000;
+
+    public const uint WS_EX_APPWINDOW = 0x00040000;
+    public const uint WS_EX_TOOLWINDOW = 0x00000080;
+
+    public const uint SWP_NOZORDER = 0x0004;
+    public const uint SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_FRAMECHANGED = 0x0020;
+    public const uint SWP_SHOWWINDOW = 0x0040;
+
+    public const int SW_SHOW = 5;
+    public const int SW_RESTORE = 9;
+
+    public const int WM_CLOSE = 0x0010;
+    public const int WM_HOTKEY = 0x0312;
+
+    // Hotkey modifiers (MOD_*)
+    public const uint MOD_NONE = 0x0000;
+    public const uint MOD_ALT = 0x0001;
+    public const uint MOD_CONTROL = 0x0002;
+    public const uint MOD_SHIFT = 0x0004;
+    public const uint MOD_WIN = 0x0008;
+
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowTextW", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowTextLengthW", SetLastError = true)]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, [MarshalAs(UnmanagedType.Bool)] bool bRepaint);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", EntryPoint = "GetClassNameW", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+
+        public int Width => Right - Left;
+        public int Height => Bottom - Top;
+    }
+
+    public static string GetWindowTitle(IntPtr hWnd)
+    {
+        int length = GetWindowTextLength(hWnd);
+        if (length == 0) return string.Empty;
+
+        var sb = new StringBuilder(length + 1);
+        GetWindowText(hWnd, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    public static string GetWindowClassName(IntPtr hWnd)
+    {
+        var sb = new StringBuilder(256);
+        int length = GetClassName(hWnd, sb, sb.Capacity);
+        return length > 0 ? sb.ToString() : string.Empty;
+    }
+}
