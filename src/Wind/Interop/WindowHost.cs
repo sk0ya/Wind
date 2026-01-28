@@ -11,6 +11,7 @@ public class WindowHost : HwndHost
     private IntPtr _originalParent;
     private int _originalStyle;
     private int _originalExStyle;
+    private NativeMethods.RECT _originalRect;
 
     private const string HostClassName = "WindWindowHost";
     private static bool _classRegistered;
@@ -119,6 +120,7 @@ public class WindowHost : HwndHost
         // Store original state for restoration
         _originalStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE);
         _originalExStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE);
+        NativeMethods.GetWindowRect(_hostedWindowHandle, out _originalRect);
 
         // Remove window decorations and make it a child window
         int newStyle = _originalStyle;
@@ -170,8 +172,9 @@ public class WindowHost : HwndHost
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE, _originalStyle);
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, _originalExStyle);
 
-        // Apply style changes and show
-        NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero, 100, 100, 800, 600,
+        // Apply style changes and restore to original position and size
+        NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
+            _originalRect.Left, _originalRect.Top, _originalRect.Width, _originalRect.Height,
             NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW);
 
         NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_RESTORE);
