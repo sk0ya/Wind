@@ -22,7 +22,8 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24">
                 <!-- Startup Section -->
-                <TextBlock Text="Startup" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                <TextBlock Text="Startup" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
                 <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                         CornerRadius="8" Padding="16" Margin="0,0,0,8">
@@ -32,7 +33,8 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Run at Windows Startup" FontWeight="SemiBold"/>
+                            <TextBlock Text="Run at Windows Startup" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Text="Start Wind automatically when Windows starts" FontSize="12"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
@@ -49,7 +51,8 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Launch Applications on Start" FontWeight="SemiBold"/>
+                                <TextBlock Text="Launch Applications on Start" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 <TextBlock Text="Applications to launch when Wind starts" FontSize="12"
                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             </StackPanel>
@@ -73,9 +76,11 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" Margin="4">
-                                        <ui:SymbolIcon Symbol="Apps24" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Apps24" Margin="0,0,8,0"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                         <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                             <TextBlock Text="{Binding Path}" FontSize="11"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        TextTrimming="CharacterEllipsis" MaxWidth="450"/>
@@ -88,21 +93,26 @@
                 </Border>
 
                 <!-- Appearance Section -->
-                <TextBlock Text="Appearance" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"/>
+                <TextBlock Text="Appearance" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
                 <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                         CornerRadius="8" Padding="16" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <RadioButton Content="Light" GroupName="Theme" Margin="0,4"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                      IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Light}"/>
                         <RadioButton Content="Dark" GroupName="Theme" Margin="0,4"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                      IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Dark}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Behavior Section -->
-                <TextBlock Text="Behavior" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"/>
+                <TextBlock Text="Behavior" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
                 <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                         CornerRadius="8" Padding="16" Margin="0,0,0,8">
@@ -112,7 +122,8 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Auto-save Session" FontWeight="SemiBold"/>
+                            <TextBlock Text="Auto-save Session" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Text="Automatically save session on exit" FontSize="12"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
@@ -128,7 +139,8 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Restore Session on Startup" FontWeight="SemiBold"/>
+                            <TextBlock Text="Restore Session on Startup" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Text="Restore last session when Wind starts" FontSize="12"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
@@ -137,18 +149,21 @@
                 </Border>
 
                 <!-- Hotkeys Section -->
-                <TextBlock Text="Hotkeys" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"/>
+                <TextBlock Text="Hotkeys" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
                 <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                         CornerRadius="8" Padding="16" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Keyboard Shortcuts" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        <TextBlock Text="Keyboard Shortcuts" FontWeight="SemiBold" Margin="0,0,0,12"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <Grid Margin="0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Next Tab" VerticalAlignment="Center"/>
+                            <TextBlock Text="Next Tab" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Grid.Column="1" Text="Ctrl + Tab" FontFamily="Consolas"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </Grid>
@@ -157,7 +172,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Previous Tab" VerticalAlignment="Center"/>
+                            <TextBlock Text="Previous Tab" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Grid.Column="1" Text="Ctrl + Shift + Tab" FontFamily="Consolas"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </Grid>
@@ -166,7 +182,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Close Tab" VerticalAlignment="Center"/>
+                            <TextBlock Text="Close Tab" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Grid.Column="1" Text="Ctrl + W" FontFamily="Consolas"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </Grid>
@@ -175,7 +192,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Switch to Tab 1-9" VerticalAlignment="Center"/>
+                            <TextBlock Text="Switch to Tab 1-9" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Grid.Column="1" Text="Ctrl + 1-9" FontFamily="Consolas"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </Grid>
@@ -183,12 +201,14 @@
                 </Border>
 
                 <!-- About Section -->
-                <TextBlock Text="About" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"/>
+                <TextBlock Text="About" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
                 <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                         CornerRadius="8" Padding="16" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Wind - Windows Tab Manager" FontWeight="SemiBold"/>
+                        <TextBlock Text="Wind - Windows Tab Manager" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <TextBlock Text="Version 1.0.0" FontSize="12"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     </StackPanel>

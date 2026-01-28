@@ -62,8 +62,10 @@
                                         <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                                                 CornerRadius="4" Padding="6,4" Margin="0,0,4,0">
                                             <StackPanel Orientation="Horizontal">
-                                                <ui:SymbolIcon Symbol="Folder24" FontSize="14" Margin="0,0,4,0"/>
-                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"/>
+                                                <ui:SymbolIcon Symbol="Folder24" FontSize="14" Margin="0,0,4,0"
+                                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                             </StackPanel>
                                         </Border>
 
@@ -84,10 +86,12 @@
                                                                    Margin="0,0,6,0" VerticalAlignment="Center"/>
                                                             <TextBlock Text="{Binding Title}" MaxWidth="150"
                                                                        TextTrimming="CharacterEllipsis"
-                                                                       VerticalAlignment="Center"/>
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                                             <ui:Button Appearance="Transparent" Padding="4"
                                                                        Margin="6,0,0,0" Click="CloseTab_Click"
-                                                                       Tag="{Binding}">
+                                                                       Tag="{Binding}"
+                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                                                 <ui:SymbolIcon Symbol="Dismiss12" FontSize="10"/>
                                                             </ui:Button>
                                                         </StackPanel>
@@ -119,10 +123,12 @@
                                                Margin="0,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding Title}" MaxWidth="150"
                                                    TextTrimming="CharacterEllipsis"
-                                                   VerticalAlignment="Center"/>
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                         <ui:Button Appearance="Transparent" Padding="4"
                                                    Margin="6,0,0,0" Click="CloseTab_Click"
-                                                   Tag="{Binding}">
+                                                   Tag="{Binding}"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                             <ui:SymbolIcon Symbol="Dismiss12" FontSize="10"/>
                                         </ui:Button>
                                     </StackPanel>

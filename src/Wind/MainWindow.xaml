@@ -106,7 +106,9 @@
                 <!-- Tabs Area -->
                 <ScrollViewer Grid.Column="0"
                               HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Disabled">
+                              VerticalScrollBarVisibility="Disabled"
+                              WindowChrome.IsHitTestVisibleInChrome="True"
+                              PreviewMouseLeftButtonDown="TabArea_PreviewMouseLeftButtonDown">
                     <StackPanel Orientation="Horizontal">
                         <!-- Tabs -->
                         <ItemsControl ItemsSource="{Binding Tabs}">
@@ -128,12 +130,14 @@
                                             <TextBlock Text="{Binding Title}" MaxWidth="120"
                                                        TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"
-                                                       FontSize="12"/>
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                             <Button Background="Transparent" BorderThickness="0"
                                                     Padding="4" Margin="6,0,0,0"
                                                     Click="CloseTab_Click" Tag="{Binding}"
                                                     WindowChrome.IsHitTestVisibleInChrome="True"
-                                                    Width="20" Height="20" Cursor="Hand">
+                                                    Width="20" Height="20" Cursor="Hand"
+                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                                 <Button.Style>
                                                     <Style TargetType="Button">
                                                         <Setter Property="Template">
@@ -162,13 +166,14 @@
 
                         <!-- Add Window Button -->
                         <Button Content="+"
-                                Command="{Binding OpenWindowPickerCommand}"
+                                Click="AddWindowButton_Click"
                                 WindowChrome.IsHitTestVisibleInChrome="True"
                                 Width="36" Height="36"
                                 FontSize="16" FontWeight="Light"
                                 Background="Transparent" BorderThickness="0"
                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                Cursor="Hand">
+                                Cursor="Hand"
+                                ToolTip="Add Window">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
@@ -234,6 +239,7 @@
 
             <!-- Window Picker Overlay -->
             <Grid Grid.RowSpan="2" Background="#80000000"
+                  Panel.ZIndex="100"
                   Visibility="{Binding IsWindowPickerOpen, Converter={StaticResource BoolToVisibility}}">
                 <views:WindowPicker x:Name="WindowPickerControl"
                                     HorizontalAlignment="Center" VerticalAlignment="Center"

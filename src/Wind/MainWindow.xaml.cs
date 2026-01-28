@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -36,8 +37,16 @@ public partial class MainWindow : Window
 
         // Wire up window picker events
         var pickerVm = (WindowPickerViewModel)WindowPickerControl.DataContext;
-        pickerVm.WindowSelected += (s, window) => _viewModel.AddWindowCommand.Execute(window);
-        pickerVm.Cancelled += (s, e) => _viewModel.CloseWindowPickerCommand.Execute(null);
+        pickerVm.WindowSelected += (s, window) =>
+        {
+            _viewModel.AddWindowCommand.Execute(window);
+            RestoreEmbeddedWindow();
+        };
+        pickerVm.Cancelled += (s, e) =>
+        {
+            _viewModel.CloseWindowPickerCommand.Execute(null);
+            RestoreEmbeddedWindow();
+        };
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -150,6 +159,26 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TabArea_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // Allow drag from empty areas in the tab bar (not on buttons or tabs)
+        if (e.OriginalSource is System.Windows.Controls.ScrollViewer ||
+            e.OriginalSource is System.Windows.Controls.ScrollContentPresenter ||
+            e.OriginalSource is System.Windows.Controls.Grid ||
+            e.OriginalSource is System.Windows.Controls.StackPanel)
+        {
+            if (e.ClickCount == 2)
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                e.Handled = true;
+            }
+            else
+            {
+                DragMove();
+            }
+        }
+    }
+
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var settingsWindow = App.GetService<SettingsWindow>();
@@ -172,6 +201,24 @@ public partial class MainWindow : Window
             _viewModel.CloseTabCommand.Execute(tab);
         }
         e.Handled = true;
+    }
+
+    private void AddWindowButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenWindowPickerCommand.Execute(null);
+        // Hide embedded window while picker is open
+        if (_currentHost != null)
+        {
+            _currentHost.Visibility = Visibility.Hidden;
+        }
+    }
+
+    private void RestoreEmbeddedWindow()
+    {
+        if (_currentHost != null)
+        {
+            _currentHost.Visibility = Visibility.Visible;
+        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

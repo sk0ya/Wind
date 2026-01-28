@@ -64,10 +64,8 @@ public class TabManager
 
         TabAdded?.Invoke(this, tab);
 
-        if (ActiveTab == null)
-        {
-            ActiveTab = tab;
-        }
+        // Always activate newly added tab
+        ActiveTab = tab;
 
         return tab;
     }
