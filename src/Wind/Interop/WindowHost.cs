@@ -12,11 +12,19 @@ public class WindowHost : HwndHost
     private int _originalStyle;
     private int _originalExStyle;
     private NativeMethods.RECT _originalRect;
+    private bool _isHostedWindowClosed;
 
     private const string HostClassName = "WindWindowHost";
     private static bool _classRegistered;
 
+    private const int WM_PARENTNOTIFY = 0x0210;
+    private const int WM_DESTROY = 0x0002;
+
     public IntPtr HostedWindowHandle => _hostedWindowHandle;
+
+    public event EventHandler? HostedWindowClosed;
+    public event EventHandler? MinimizeRequested;
+    public event EventHandler? MaximizeRequested;
 
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern IntPtr CreateWindowEx(
@@ -35,6 +43,37 @@ public class WindowHost : HwndHost
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetWinEventHook(
+        uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
+        WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    private delegate void WinEventDelegate(
+        IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+        int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+    private const uint EVENT_SYSTEM_MINIMIZESTART = 0x0016;
+    private const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+    private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+    private const int OBJID_WINDOW = 0;
+
+    private IntPtr _winEventHookMinimize;
+    private IntPtr _winEventHookLocation;
+    private WinEventDelegate? _winEventProc;
+    private bool _wasMaximized;
+
+    [DllImport("user32.dll")]
+    private static extern bool IsZoomed(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
 
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
     private static WndProcDelegate? _wndProcDelegate;
@@ -147,7 +186,75 @@ public class WindowHost : HwndHost
         // Make sure it's visible
         NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_SHOW);
 
+        // Set up event hook to monitor hosted window events
+        SetupWinEventHook();
+
         return new HandleRef(this, _hwndHost);
+    }
+
+    private void SetupWinEventHook()
+    {
+        if (_hostedWindowHandle == IntPtr.Zero) return;
+
+        GetWindowThreadProcessId(_hostedWindowHandle, out uint processId);
+
+        _winEventProc = WinEventCallback;
+
+        // Hook for minimize events
+        _winEventHookMinimize = SetWinEventHook(
+            EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZESTART,
+            IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
+
+        // Hook for location/size changes to detect maximize
+        _winEventHookLocation = SetWinEventHook(
+            EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE,
+            IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
+    }
+
+    private void RemoveWinEventHook()
+    {
+        if (_winEventHookMinimize != IntPtr.Zero)
+        {
+            UnhookWinEvent(_winEventHookMinimize);
+            _winEventHookMinimize = IntPtr.Zero;
+        }
+        if (_winEventHookLocation != IntPtr.Zero)
+        {
+            UnhookWinEvent(_winEventHookLocation);
+            _winEventHookLocation = IntPtr.Zero;
+        }
+        _winEventProc = null;
+    }
+
+    private void WinEventCallback(
+        IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+        int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+    {
+        if (hwnd != _hostedWindowHandle) return;
+
+        if (eventType == EVENT_SYSTEM_MINIMIZESTART)
+        {
+            // The hosted window is trying to minimize
+            // Restore it immediately and minimize Wind instead
+            NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_RESTORE);
+            MinimizeRequested?.Invoke(this, EventArgs.Empty);
+        }
+        else if (eventType == EVENT_OBJECT_LOCATIONCHANGE && idObject == OBJID_WINDOW)
+        {
+            // Check if window became maximized
+            bool isMaximized = IsZoomed(_hostedWindowHandle);
+            if (isMaximized && !_wasMaximized)
+            {
+                // Window just became maximized - restore it and maximize Wind instead
+                _wasMaximized = true;
+                NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_RESTORE);
+                MaximizeRequested?.Invoke(this, EventArgs.Empty);
+            }
+            else if (!isMaximized)
+            {
+                _wasMaximized = false;
+            }
+        }
     }
 
     protected override void DestroyWindowCore(HandleRef hwnd)
@@ -163,7 +270,10 @@ public class WindowHost : HwndHost
 
     public void ReleaseWindow()
     {
-        if (_hostedWindowHandle == IntPtr.Zero) return;
+        if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
+
+        // Remove event hook before releasing
+        RemoveWinEventHook();
 
         // Restore parent (to desktop)
         NativeMethods.SetParent(_hostedWindowHandle, IntPtr.Zero);
@@ -184,7 +294,7 @@ public class WindowHost : HwndHost
 
     public void ResizeHostedWindow(int width, int height)
     {
-        if (_hwndHost == IntPtr.Zero || _hostedWindowHandle == IntPtr.Zero) return;
+        if (_hwndHost == IntPtr.Zero || _hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
 
         // Resize host window
         NativeMethods.MoveWindow(_hwndHost, 0, 0, width, height, true);
@@ -197,7 +307,7 @@ public class WindowHost : HwndHost
     {
         base.OnWindowPositionChanged(rcBoundingBox);
 
-        if (_hwndHost != IntPtr.Zero && _hostedWindowHandle != IntPtr.Zero)
+        if (_hwndHost != IntPtr.Zero && _hostedWindowHandle != IntPtr.Zero && !_isHostedWindowClosed)
         {
             int width = (int)rcBoundingBox.Width;
             int height = (int)rcBoundingBox.Height;
@@ -207,5 +317,24 @@ public class WindowHost : HwndHost
                 ResizeHostedWindow(width, height);
             }
         }
+    }
+
+    protected override IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_PARENTNOTIFY)
+        {
+            int eventCode = wParam.ToInt32() & 0xFFFF;
+            if (eventCode == WM_DESTROY)
+            {
+                // Hosted window is being destroyed
+                _isHostedWindowClosed = true;
+                _hostedWindowHandle = IntPtr.Zero;
+                HostedWindowClosed?.Invoke(this, EventArgs.Empty);
+                handled = true;
+                return IntPtr.Zero;
+            }
+        }
+
+        return base.WndProc(hwnd, msg, wParam, lParam, ref handled);
     }
 }

@@ -16,6 +16,7 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly HotkeyManager _hotkeyManager;
+    private readonly TabManager _tabManager;
     private WindowHost? _currentHost;
     private Point? _dragStartPoint;
     private bool _isDragging;
@@ -26,6 +27,7 @@ public partial class MainWindow : Window
 
         _viewModel = App.GetService<MainViewModel>();
         _hotkeyManager = App.GetService<HotkeyManager>();
+        _tabManager = App.GetService<TabManager>();
 
         DataContext = _viewModel;
         WindowPickerControl.DataContext = App.GetService<WindowPickerViewModel>();
@@ -48,6 +50,16 @@ public partial class MainWindow : Window
         {
             _viewModel.CloseWindowPickerCommand.Execute(null);
             RestoreEmbeddedWindow();
+        };
+
+        // Wire up hosted window control events
+        _tabManager.MinimizeRequested += (s, e) =>
+        {
+            WindowState = WindowState.Minimized;
+        };
+        _tabManager.MaximizeRequested += (s, e) =>
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         };
     }
 

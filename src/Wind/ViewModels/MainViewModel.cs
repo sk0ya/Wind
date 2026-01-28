@@ -189,6 +189,9 @@ public partial class MainViewModel : ObservableObject
 
     public void Cleanup()
     {
+        // Stop the window picker timer first to prevent UI updates during cleanup
+        _windowPickerViewModel.Stop();
+
         _tabManager.ActiveTabChanged -= OnActiveTabChanged;
         _hotkeyManager.HotkeyPressed -= OnHotkeyPressed;
         _tabManager.ReleaseAllTabs();

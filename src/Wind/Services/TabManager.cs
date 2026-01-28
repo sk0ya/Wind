@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Wind.Interop;
 using Wind.Models;
 
@@ -9,6 +10,7 @@ public class TabManager
 {
     private readonly WindowManager _windowManager;
     private readonly Dictionary<Guid, WindowHost> _windowHosts = new();
+    private readonly Dispatcher _dispatcher;
 
     public ObservableCollection<TabItem> Tabs { get; } = new();
     public ObservableCollection<TabGroup> Groups { get; } = new();
@@ -37,10 +39,13 @@ public class TabManager
     public event EventHandler<TabItem?>? ActiveTabChanged;
     public event EventHandler<TabItem>? TabAdded;
     public event EventHandler<TabItem>? TabRemoved;
+    public event EventHandler? MinimizeRequested;
+    public event EventHandler? MaximizeRequested;
 
     public TabManager(WindowManager windowManager)
     {
         _windowManager = windowManager;
+        _dispatcher = Dispatcher.CurrentDispatcher;
     }
 
     public TabItem? AddTab(WindowInfo windowInfo)
@@ -60,6 +65,12 @@ public class TabManager
 
         var tab = new TabItem(windowInfo);
         _windowHosts[tab.Id] = host;
+
+        // Subscribe to hosted window events
+        host.HostedWindowClosed += (s, e) => OnHostedWindowClosed(tab);
+        host.MinimizeRequested += (s, e) => MinimizeRequested?.Invoke(this, EventArgs.Empty);
+        host.MaximizeRequested += (s, e) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
+
         Tabs.Add(tab);
 
         TabAdded?.Invoke(this, tab);
@@ -68,6 +79,44 @@ public class TabManager
         ActiveTab = tab;
 
         return tab;
+    }
+
+    private void OnHostedWindowClosed(TabItem tab)
+    {
+        // Ensure we're on the UI thread
+        if (!_dispatcher.CheckAccess())
+        {
+            _dispatcher.BeginInvoke(() => OnHostedWindowClosed(tab));
+            return;
+        }
+
+        // Remove the tab without trying to release the window (it's already closed)
+        if (_windowHosts.TryGetValue(tab.Id, out var host))
+        {
+            _windowHosts.Remove(tab.Id);
+        }
+
+        tab.Group?.RemoveTab(tab);
+
+        var index = Tabs.IndexOf(tab);
+        if (index < 0) return;
+
+        Tabs.Remove(tab);
+        TabRemoved?.Invoke(this, tab);
+
+        // Select adjacent tab
+        if (ActiveTab == tab)
+        {
+            if (Tabs.Count > 0)
+            {
+                var newIndex = Math.Min(index, Tabs.Count - 1);
+                ActiveTab = Tabs[newIndex];
+            }
+            else
+            {
+                ActiveTab = null;
+            }
+        }
     }
 
     public void RemoveTab(TabItem tab)
