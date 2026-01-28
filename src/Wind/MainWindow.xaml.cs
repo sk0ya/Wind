@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly HotkeyManager _hotkeyManager;
     private WindowHost? _currentHost;
+    private Point? _dragStartPoint;
+    private bool _isDragging;
 
     public MainWindow()
     {
@@ -154,8 +156,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Drag to move
-            DragMove();
+            StartDragTracking(e);
         }
     }
 
@@ -174,8 +175,64 @@ public partial class MainWindow : Window
             }
             else
             {
-                DragMove();
+                StartDragTracking(e);
             }
+        }
+    }
+
+    private void StartDragTracking(System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _dragStartPoint = e.GetPosition(this);
+        _isDragging = false;
+        CaptureMouse();
+    }
+
+    protected override void OnPreviewMouseMove(System.Windows.Input.MouseEventArgs e)
+    {
+        base.OnPreviewMouseMove(e);
+
+        if (_dragStartPoint.HasValue && !_isDragging)
+        {
+            var currentPos = e.GetPosition(this);
+            var diff = currentPos - _dragStartPoint.Value;
+
+            if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+            {
+                _isDragging = true;
+                ReleaseMouseCapture();
+
+                if (WindowState == WindowState.Maximized)
+                {
+                    // Get mouse position relative to screen
+                    var mousePos = PointToScreen(e.GetPosition(this));
+
+                    // Calculate relative position within window (as percentage)
+                    var relativeX = e.GetPosition(this).X / ActualWidth;
+
+                    // Restore window
+                    WindowState = WindowState.Normal;
+
+                    // Position window so mouse is at same relative position
+                    Left = mousePos.X - (Width * relativeX);
+                    Top = mousePos.Y - 18; // Half of title bar height
+                }
+
+                DragMove();
+                _dragStartPoint = null;
+            }
+        }
+    }
+
+    protected override void OnPreviewMouseLeftButtonUp(System.Windows.Input.MouseButtonEventArgs e)
+    {
+        base.OnPreviewMouseLeftButtonUp(e);
+
+        if (_dragStartPoint.HasValue)
+        {
+            _dragStartPoint = null;
+            _isDragging = false;
+            ReleaseMouseCapture();
         }
     }
 
