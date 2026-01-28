@@ -15,6 +15,7 @@ public partial class MainViewModel : ObservableObject
     private readonly TabManager _tabManager;
     private readonly SessionManager _sessionManager;
     private readonly HotkeyManager _hotkeyManager;
+    private readonly WindowPickerViewModel _windowPickerViewModel;
 
     public ObservableCollection<TabItem> Tabs => _tabManager.Tabs;
     public ObservableCollection<TabGroup> Groups => _tabManager.Groups;
@@ -36,12 +37,14 @@ public partial class MainViewModel : ObservableObject
         WindowManager windowManager,
         TabManager tabManager,
         SessionManager sessionManager,
-        HotkeyManager hotkeyManager)
+        HotkeyManager hotkeyManager,
+        WindowPickerViewModel windowPickerViewModel)
     {
         _windowManager = windowManager;
         _tabManager = tabManager;
         _sessionManager = sessionManager;
         _hotkeyManager = hotkeyManager;
+        _windowPickerViewModel = windowPickerViewModel;
 
         _tabManager.ActiveTabChanged += OnActiveTabChanged;
         _hotkeyManager.HotkeyPressed += OnHotkeyPressed;
@@ -101,13 +104,14 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenWindowPicker()
     {
-        _windowManager.RefreshWindowList();
+        _windowPickerViewModel.Start();
         IsWindowPickerOpen = true;
     }
 
     [RelayCommand]
     private void CloseWindowPicker()
     {
+        _windowPickerViewModel.Stop();
         IsWindowPickerOpen = false;
     }
 
@@ -120,6 +124,7 @@ public partial class MainViewModel : ObservableObject
         if (tab != null)
         {
             StatusMessage = $"Added: {tab.Title}";
+            _windowPickerViewModel.Stop();
             IsWindowPickerOpen = false;
         }
         else

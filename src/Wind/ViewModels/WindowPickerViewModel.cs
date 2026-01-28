@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using System.Windows.Threading;
 using Wind.Models;
 using Wind.Services;
 
@@ -12,8 +13,10 @@ public partial class WindowPickerViewModel : ObservableObject
 {
     private readonly WindowManager _windowManager;
     private readonly ICollectionView _windowsView;
+    private readonly ObservableCollection<WindowInfo> _availableWindows;
+    private readonly DispatcherTimer _refreshTimer;
 
-    public ObservableCollection<WindowInfo> AvailableWindows => _windowManager.AvailableWindows;
+    public ObservableCollection<WindowInfo> AvailableWindows => _availableWindows;
 
     public ICollectionView WindowsView => _windowsView;
 
@@ -29,8 +32,58 @@ public partial class WindowPickerViewModel : ObservableObject
     public WindowPickerViewModel(WindowManager windowManager)
     {
         _windowManager = windowManager;
-        _windowsView = CollectionViewSource.GetDefaultView(AvailableWindows);
+        _availableWindows = new ObservableCollection<WindowInfo>();
+        _windowsView = CollectionViewSource.GetDefaultView(_availableWindows);
         _windowsView.Filter = FilterWindows;
+
+        _refreshTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _refreshTimer.Tick += (s, e) => RefreshWindowList();
+    }
+
+    public void Start()
+    {
+        SearchText = string.Empty;
+        SelectedWindow = null;
+        RefreshWindowList();
+        _refreshTimer.Start();
+    }
+
+    public void Stop()
+    {
+        _refreshTimer.Stop();
+    }
+
+    private void RefreshWindowList()
+    {
+        var currentSelection = SelectedWindow?.Handle;
+        var windows = _windowManager.EnumerateWindows();
+
+        // 追加されたウィンドウを追加
+        foreach (var window in windows)
+        {
+            if (!_availableWindows.Any(w => w.Handle == window.Handle))
+            {
+                _availableWindows.Add(window);
+            }
+        }
+
+        // 削除されたウィンドウを削除
+        for (int i = _availableWindows.Count - 1; i >= 0; i--)
+        {
+            if (!windows.Any(w => w.Handle == _availableWindows[i].Handle))
+            {
+                _availableWindows.RemoveAt(i);
+            }
+        }
+
+        // 選択を復元
+        if (currentSelection != null)
+        {
+            SelectedWindow = _availableWindows.FirstOrDefault(w => w.Handle == currentSelection);
+        }
     }
 
     partial void OnSearchTextChanged(string value)
@@ -45,13 +98,6 @@ public partial class WindowPickerViewModel : ObservableObject
 
         return window.Title.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                window.ProcessName.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [RelayCommand]
-    private void Refresh()
-    {
-        _windowManager.RefreshWindowList();
-        _windowsView.Refresh();
     }
 
     [RelayCommand]

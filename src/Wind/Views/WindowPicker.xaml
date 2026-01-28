@@ -32,21 +32,10 @@
             </StackPanel>
 
             <!-- Search -->
-            <Grid Grid.Row="1" Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <ui:TextBox PlaceholderText="Search windows..."
-                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                            Icon="{ui:SymbolIcon Search24}"/>
-                <ui:Button Grid.Column="1" ToolTip="Refresh"
-                           Command="{Binding RefreshCommand}"
-                           Margin="8,0,0,0" Padding="10">
-                    <ui:SymbolIcon Symbol="ArrowSync24"/>
-                </ui:Button>
-            </Grid>
+            <ui:TextBox Grid.Row="1" Margin="0,0,0,12"
+                        PlaceholderText="Search windows..."
+                        Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                        Icon="{ui:SymbolIcon Search24}"/>
 
             <!-- Window List -->
             <Border Grid.Row="2" Background="{DynamicResource ControlFillColorDefaultBrush}"

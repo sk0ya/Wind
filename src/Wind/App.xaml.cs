@@ -28,7 +28,7 @@ public partial class App : Application
 
         // ViewModels
         services.AddSingleton<MainViewModel>();
-        services.AddTransient<WindowPickerViewModel>();
+        services.AddSingleton<WindowPickerViewModel>();
         services.AddTransient<SettingsViewModel>();
 
         // Windows
