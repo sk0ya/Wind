@@ -322,8 +322,8 @@ public partial class MainWindow : Window
         var width = (int)WindowHostContainer.ActualWidth;
         var height = (int)WindowHostContainer.ActualHeight;
 
-        width = Math.Max(0, width - 4);
-        height = Math.Max(0, height - 4);
+        width = Math.Max(0, width);
+        height = Math.Max(0, height);
 
         if (width > 0 && height > 0)
         {

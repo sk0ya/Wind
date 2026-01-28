@@ -226,13 +226,14 @@
                 </StackPanel>
 
                 <!-- Window Host Container -->
-                <Border x:Name="WindowHostContainer" ClipToBounds="True"
+                <Border x:Name="WindowHostContainer" ClipToBounds="True" Padding="0" Margin="0"
                         Visibility="{Binding SelectedTab, Converter={StaticResource NullToVisibility}}">
                     <ContentControl x:Name="WindowHostContent"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Stretch"
                                     VerticalContentAlignment="Stretch"
+                                    Margin="0"
                                     Focusable="False"/>
                 </Border>
             </Grid>
