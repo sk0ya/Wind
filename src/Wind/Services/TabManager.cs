@@ -256,10 +256,21 @@ public class TabManager
 
     public void ReleaseAllTabs()
     {
+        // First, release all window hosts before modifying the collection.
+        // This prevents UI binding updates from triggering DestroyWindowCore
+        // on WindowHost objects before SetParent has detached the hosted windows.
         foreach (var tab in Tabs.ToList())
         {
-            RemoveTab(tab);
+            if (_windowHosts.TryGetValue(tab.Id, out var host))
+            {
+                _windowManager.ReleaseWindow(host);
+                _windowHosts.Remove(tab.Id);
+            }
         }
+
+        // Now safe to clear the collection and update UI
+        Tabs.Clear();
+        ActiveTab = null;
     }
 
     public void ToggleMultiSelect(TabItem tab)

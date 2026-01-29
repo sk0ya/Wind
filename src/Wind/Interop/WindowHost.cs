@@ -259,7 +259,21 @@ public class WindowHost : HwndHost
 
     protected override void DestroyWindowCore(HandleRef hwnd)
     {
-        ReleaseWindow();
+        // Detach the hosted window before destroying the host HWND.
+        // If the hosted window is still a child of _hwndHost when DestroyWindow
+        // is called, Windows will cascade-destroy it, killing the hosted process's window.
+        if (_hostedWindowHandle != IntPtr.Zero && !_isHostedWindowClosed)
+        {
+            RemoveWinEventHook();
+            NativeMethods.SetParent(_hostedWindowHandle, IntPtr.Zero);
+            NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE, _originalStyle);
+            NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, _originalExStyle);
+            NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
+                _originalRect.Left, _originalRect.Top, _originalRect.Width, _originalRect.Height,
+                NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW);
+            NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_RESTORE);
+            _hostedWindowHandle = IntPtr.Zero;
+        }
 
         if (_hwndHost != IntPtr.Zero)
         {
