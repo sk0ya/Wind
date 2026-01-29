@@ -91,6 +91,21 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
 
+                        <!-- Arguments editor for selected app -->
+                        <Grid Margin="0,12,0,0"
+                              Visibility="{Binding SelectedStartupApplication, Converter={StaticResource NotNullConverter}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Arguments" VerticalAlignment="Center" Margin="0,0,12,0"
+                                       FontWeight="SemiBold" FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ui:TextBox Grid.Column="1"
+                                       Text="{Binding SelectedAppArguments, UpdateSourceTrigger=PropertyChanged}"
+                                       PlaceholderText="e.g. --flag value"/>
+                        </Grid>
+
                     </StackPanel>
                 </Border>
 

@@ -108,49 +108,36 @@ public class SettingsManager
         }
     }
 
-    public void AddStartupApplication(string path, string arguments = "", string? name = null)
+    public StartupApplication AddStartupApplication(string path, string arguments = "", string? name = null)
     {
-        if (string.IsNullOrWhiteSpace(path)) return;
+        if (string.IsNullOrWhiteSpace(path)) return null!;
 
         var appName = name ?? Path.GetFileNameWithoutExtension(path);
 
-        if (_settings.StartupApplications.Any(a => a.Path.Equals(path, StringComparison.OrdinalIgnoreCase)))
-            return;
-
-        _settings.StartupApplications.Add(new StartupApplication
+        var app = new StartupApplication
         {
             Path = path,
             Arguments = arguments,
             Name = appName
-        });
+        };
 
+        _settings.StartupApplications.Add(app);
         SaveSettings();
+
+        return app;
     }
 
-    public void RemoveStartupApplication(string path)
+    public void RemoveStartupApplication(StartupApplication app)
     {
-        var app = _settings.StartupApplications
-            .FirstOrDefault(a => a.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
-
-        if (app != null)
+        if (_settings.StartupApplications.Remove(app))
         {
-            _settings.StartupApplications.Remove(app);
             SaveSettings();
         }
     }
 
-    public void UpdateStartupApplication(StartupApplication app)
+    public void SaveStartupApplication()
     {
-        var existing = _settings.StartupApplications
-            .FirstOrDefault(a => a.Path.Equals(app.Path, StringComparison.OrdinalIgnoreCase));
-
-        if (existing != null)
-        {
-            existing.Group = app.Group;
-            existing.Tile = app.Tile;
-            existing.TilePosition = app.TilePosition;
-            SaveSettings();
-        }
+        SaveSettings();
     }
 
     public void AddStartupGroup(string name, string color)

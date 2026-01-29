@@ -42,6 +42,9 @@ public partial class SettingsViewModel : ObservableObject
     private StartupApplication? _selectedStartupApplication;
 
     [ObservableProperty]
+    private string _selectedAppArguments = string.Empty;
+
+    [ObservableProperty]
     private string _selectedTheme = "Dark";
 
     // Tile Sets
@@ -105,6 +108,20 @@ public partial class SettingsViewModel : ObservableObject
         return available;
     }
 
+    partial void OnSelectedStartupApplicationChanged(StartupApplication? value)
+    {
+        SelectedAppArguments = value?.Arguments ?? string.Empty;
+    }
+
+    partial void OnSelectedAppArgumentsChanged(string value)
+    {
+        if (SelectedStartupApplication != null && SelectedStartupApplication.Arguments != value)
+        {
+            SelectedStartupApplication.Arguments = value;
+            _settingsManager.SaveStartupApplication();
+        }
+    }
+
     partial void OnRunAtWindowsStartupChanged(bool value)
     {
         _settingsManager.SetRunAtWindowsStartup(value);
@@ -132,14 +149,7 @@ public partial class SettingsViewModel : ObservableObject
             var path = dialog.FileName;
             var name = Path.GetFileNameWithoutExtension(path);
 
-            _settingsManager.AddStartupApplication(path, "", name);
-
-            var app = new StartupApplication
-            {
-                Path = path,
-                Name = name,
-                Arguments = ""
-            };
+            var app = _settingsManager.AddStartupApplication(path, "", name);
             StartupApplications.Add(app);
         }
     }
@@ -155,7 +165,7 @@ public partial class SettingsViewModel : ObservableObject
             ts.Apps.Remove(SelectedStartupApplication);
         }
 
-        _settingsManager.RemoveStartupApplication(SelectedStartupApplication.Path);
+        _settingsManager.RemoveStartupApplication(SelectedStartupApplication);
         StartupApplications.Remove(SelectedStartupApplication);
         SelectedStartupApplication = null;
     }
@@ -179,7 +189,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             app.Tile = null;
             app.TilePosition = null;
-            _settingsManager.UpdateStartupApplication(app);
+            _settingsManager.SaveStartupApplication();
         }
         TileSets.Remove(tileSet);
     }
@@ -194,7 +204,7 @@ public partial class SettingsViewModel : ObservableObject
         app.TilePosition = tileSet.Apps.Count;
         tileSet.Apps.Add(app);
         tileSet.AppToAdd = null;
-        _settingsManager.UpdateStartupApplication(app);
+        _settingsManager.SaveStartupApplication();
     }
 
     [RelayCommand]
@@ -208,7 +218,7 @@ public partial class SettingsViewModel : ObservableObject
         tileSet.Apps.Remove(app);
         tileSet.SelectedApp = null;
         UpdateTilePositions(tileSet);
-        _settingsManager.UpdateStartupApplication(app);
+        _settingsManager.SaveStartupApplication();
     }
 
     [RelayCommand]
@@ -240,8 +250,8 @@ public partial class SettingsViewModel : ObservableObject
         for (int i = 0; i < tileSet.Apps.Count; i++)
         {
             tileSet.Apps[i].TilePosition = i;
-            _settingsManager.UpdateStartupApplication(tileSet.Apps[i]);
         }
+        _settingsManager.SaveStartupApplication();
     }
 
     private void ApplyTheme(string theme)
