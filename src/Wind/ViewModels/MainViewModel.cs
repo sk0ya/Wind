@@ -33,6 +33,21 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = "Ready";
 
+    [ObservableProperty]
+    private TileLayout? _currentTileLayout;
+
+    /// <summary>
+    /// True when a tile layout exists (may or may not be visible).
+    /// </summary>
+    [ObservableProperty]
+    private bool _isTiled;
+
+    /// <summary>
+    /// True when the tile view is currently shown (active tab is a tiled tab).
+    /// </summary>
+    [ObservableProperty]
+    private bool _isTileVisible;
+
     public MainViewModel(
         WindowManager windowManager,
         TabManager tabManager,
@@ -47,13 +62,33 @@ public partial class MainViewModel : ObservableObject
         _windowPickerViewModel = windowPickerViewModel;
 
         _tabManager.ActiveTabChanged += OnActiveTabChanged;
+        _tabManager.TileLayoutChanged += OnTileLayoutChanged;
         _hotkeyManager.HotkeyPressed += OnHotkeyPressed;
     }
 
     private void OnActiveTabChanged(object? sender, TabItem? tab)
     {
         SelectedTab = tab;
-        CurrentWindowHost = tab != null ? _tabManager.GetWindowHost(tab) : null;
+
+        if (IsTiled && tab != null && tab.IsTiled)
+        {
+            // Clicked a tiled tab — show tile view
+            IsTileVisible = true;
+            CurrentWindowHost = null;
+        }
+        else
+        {
+            // Clicked a non-tiled tab or no tile layout — show single view
+            IsTileVisible = false;
+            CurrentWindowHost = tab != null ? _tabManager.GetWindowHost(tab) : null;
+        }
+    }
+
+    private void OnTileLayoutChanged(object? sender, TileLayout? layout)
+    {
+        CurrentTileLayout = layout;
+        IsTiled = layout?.IsActive == true;
+        IsTileVisible = layout?.IsActive == true;
     }
 
     private void OnHotkeyPressed(object? sender, HotkeyBinding binding)
@@ -155,7 +190,45 @@ public partial class MainViewModel : ObservableObject
         StatusMessage = $"Deleted: {group.Name}";
     }
 
+    [RelayCommand]
+    private void ToggleMultiSelect(TabItem tab)
+    {
+        _tabManager.ToggleMultiSelect(tab);
+    }
+
+    [RelayCommand]
+    private void TileSelectedTabs()
+    {
+        var selectedTabs = _tabManager.GetMultiSelectedTabs();
+        if (selectedTabs.Count < 2)
+        {
+            StatusMessage = "Select 2 or more tabs to tile";
+            return;
+        }
+
+        _tabManager.StartTile(selectedTabs);
+        StatusMessage = $"Tiled {selectedTabs.Count} tabs";
+    }
+
+    [RelayCommand]
+    private void StopTile()
+    {
+        _tabManager.StopTile();
+        IsTileVisible = false;
+        // Restore single tab view
+        if (SelectedTab != null)
+        {
+            CurrentWindowHost = _tabManager.GetWindowHost(SelectedTab);
+        }
+        StatusMessage = "Tile layout stopped";
+    }
+
     // Non-command methods for multi-parameter operations
+    public WindowHost? GetWindowHost(TabItem tab)
+    {
+        return _tabManager.GetWindowHost(tab);
+    }
+
     public void AddTabToGroup(TabItem tab, TabGroup group)
     {
         _tabManager.AddTabToGroup(tab, group);
@@ -193,6 +266,7 @@ public partial class MainViewModel : ObservableObject
         _windowPickerViewModel.Stop();
 
         _tabManager.ActiveTabChanged -= OnActiveTabChanged;
+        _tabManager.TileLayoutChanged -= OnTileLayoutChanged;
         _hotkeyManager.HotkeyPressed -= OnHotkeyPressed;
         _tabManager.ReleaseAllTabs();
         _hotkeyManager.Dispose();

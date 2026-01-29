@@ -20,6 +20,12 @@ public partial class TabItem : ObservableObject
     private bool _isSelected;
 
     [ObservableProperty]
+    private bool _isMultiSelected;
+
+    [ObservableProperty]
+    private bool _isTiled;
+
+    [ObservableProperty]
     private TabGroup? _group;
 
     public TabItem()

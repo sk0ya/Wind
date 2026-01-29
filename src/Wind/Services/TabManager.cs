@@ -36,9 +36,21 @@ public class TabManager
         }
     }
 
+    private TileLayout? _currentTileLayout;
+    public TileLayout? CurrentTileLayout
+    {
+        get => _currentTileLayout;
+        private set
+        {
+            _currentTileLayout = value;
+            TileLayoutChanged?.Invoke(this, value);
+        }
+    }
+
     public event EventHandler<TabItem?>? ActiveTabChanged;
     public event EventHandler<TabItem>? TabAdded;
     public event EventHandler<TabItem>? TabRemoved;
+    public event EventHandler<TileLayout?>? TileLayoutChanged;
     public event EventHandler? MinimizeRequested;
     public event EventHandler? MaximizeRequested;
 
@@ -248,5 +260,43 @@ public class TabManager
         {
             RemoveTab(tab);
         }
+    }
+
+    public void ToggleMultiSelect(TabItem tab)
+    {
+        tab.IsMultiSelected = !tab.IsMultiSelected;
+    }
+
+    public void ClearMultiSelection()
+    {
+        foreach (var tab in Tabs)
+        {
+            tab.IsMultiSelected = false;
+        }
+    }
+
+    public IReadOnlyList<TabItem> GetMultiSelectedTabs()
+    {
+        return Tabs.Where(t => t.IsMultiSelected).ToList();
+    }
+
+    public void StartTile(IEnumerable<TabItem> tabs)
+    {
+        // Stop existing tile if any
+        StopTile();
+
+        var tabList = tabs.ToList();
+        if (tabList.Count < 2) return;
+
+        CurrentTileLayout = new TileLayout(tabList);
+        ClearMultiSelection();
+    }
+
+    public void StopTile()
+    {
+        if (CurrentTileLayout == null) return;
+
+        CurrentTileLayout.Deactivate();
+        CurrentTileLayout = null;
     }
 }

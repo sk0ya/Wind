@@ -84,6 +84,13 @@
                     <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
                     <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
                 </DataTrigger>
+                <DataTrigger Binding="{Binding IsMultiSelected}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                    <Setter Property="Opacity" Value="0.7"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsTiled}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}"/>
+                </DataTrigger>
             </Style.Triggers>
         </Style>
     </Window.Resources>
@@ -122,8 +129,18 @@
                                     <Border Style="{StaticResource TabItemStyle}"
                                             Height="36"
                                             MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
+                                            MouseRightButtonUp="TabItem_MouseRightButtonUp"
                                             WindowChrome.IsHitTestVisibleInChrome="True"
                                             Tag="{Binding}">
+                                        <Border.ContextMenu>
+                                            <ContextMenu Tag="{Binding}">
+                                                <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
+                                                <MenuItem Header="タイル解除" Click="StopTile_Click"
+                                                          Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
+                                                <Separator/>
+                                                <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <Image Source="{Binding Icon}" Width="16" Height="16"
                                                    Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -225,7 +242,7 @@
                                HorizontalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Window Host Container -->
+                <!-- Single Window Host Container -->
                 <Border x:Name="WindowHostContainer" ClipToBounds="True" Padding="0" Margin="0"
                         Visibility="{Binding SelectedTab, Converter={StaticResource NullToVisibility}}">
                     <ContentControl x:Name="WindowHostContent"
@@ -236,6 +253,10 @@
                                     Margin="0"
                                     Focusable="False"/>
                 </Border>
+
+                <!-- Tile Container -->
+                <Grid x:Name="TileContainer" ClipToBounds="True"
+                      Visibility="Collapsed"/>
             </Grid>
 
             <!-- Window Picker Overlay -->
