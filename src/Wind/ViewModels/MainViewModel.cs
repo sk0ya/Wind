@@ -15,6 +15,7 @@ public partial class MainViewModel : ObservableObject
     private readonly TabManager _tabManager;
     private readonly HotkeyManager _hotkeyManager;
     private readonly WindowPickerViewModel _windowPickerViewModel;
+    private readonly SettingsManager _settingsManager;
 
     public ObservableCollection<TabItem> Tabs => _tabManager.Tabs;
     public ObservableCollection<TabGroup> Groups => _tabManager.Groups;
@@ -51,12 +52,14 @@ public partial class MainViewModel : ObservableObject
         WindowManager windowManager,
         TabManager tabManager,
         HotkeyManager hotkeyManager,
-        WindowPickerViewModel windowPickerViewModel)
+        WindowPickerViewModel windowPickerViewModel,
+        SettingsManager settingsManager)
     {
         _windowManager = windowManager;
         _tabManager = tabManager;
         _hotkeyManager = hotkeyManager;
         _windowPickerViewModel = windowPickerViewModel;
+        _settingsManager = settingsManager;
 
         _tabManager.ActiveTabChanged += OnActiveTabChanged;
         _tabManager.TileLayoutChanged += OnTileLayoutChanged;
@@ -251,7 +254,20 @@ public partial class MainViewModel : ObservableObject
         _tabManager.ActiveTabChanged -= OnActiveTabChanged;
         _tabManager.TileLayoutChanged -= OnTileLayoutChanged;
         _hotkeyManager.HotkeyPressed -= OnHotkeyPressed;
-        _tabManager.ReleaseAllTabs();
+
+        switch (_settingsManager.Settings.CloseWindowsOnExit)
+        {
+            case "All":
+                _tabManager.CloseAllTabs();
+                break;
+            case "StartupOnly":
+                _tabManager.CloseStartupTabs();
+                break;
+            default:
+                _tabManager.ReleaseAllTabs();
+                break;
+        }
+
         _hotkeyManager.Dispose();
     }
 
@@ -294,6 +310,7 @@ public partial class MainViewModel : ObservableObject
                     var tab = _tabManager.AddTab(windowInfo);
                     if (tab != null)
                     {
+                        tab.IsLaunchedAtStartup = true;
                         StatusMessage = $"Added: {tab.Title}";
                         configTabPairs.Add((config, tab));
                     }

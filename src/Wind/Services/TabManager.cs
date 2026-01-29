@@ -261,6 +261,47 @@ public class TabManager
         }
     }
 
+    public void CloseStartupTabs()
+    {
+        foreach (var tab in Tabs.ToList())
+        {
+            if (_windowHosts.TryGetValue(tab.Id, out var host))
+            {
+                if (tab.IsLaunchedAtStartup)
+                {
+                    if (tab.Window?.Handle != IntPtr.Zero)
+                    {
+                        NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    }
+                }
+                else
+                {
+                    _windowManager.ReleaseWindow(host);
+                }
+                _windowHosts.Remove(tab.Id);
+            }
+        }
+        Tabs.Clear();
+        ActiveTab = null;
+    }
+
+    public void CloseAllTabs()
+    {
+        foreach (var tab in Tabs.ToList())
+        {
+            if (tab.Window?.Handle != IntPtr.Zero)
+            {
+                NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            }
+            if (_windowHosts.TryGetValue(tab.Id, out var host))
+            {
+                _windowHosts.Remove(tab.Id);
+            }
+        }
+        Tabs.Clear();
+        ActiveTab = null;
+    }
+
     public void ReleaseAllTabs()
     {
         // First, release all window hosts before modifying the collection.

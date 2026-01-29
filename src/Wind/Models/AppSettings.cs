@@ -6,6 +6,12 @@ public class AppSettings
     public List<StartupApplication> StartupApplications { get; set; } = new();
     public string Theme { get; set; } = "Dark";
     public List<StartupGroup> StartupGroups { get; set; } = new();
+    /// <summary>
+    /// "None" = release windows to desktop (default),
+    /// "All" = close all tab windows,
+    /// "StartupOnly" = close only windows launched at startup
+    /// </summary>
+    public string CloseWindowsOnExit { get; set; } = "None";
 }
 
 public class StartupApplication

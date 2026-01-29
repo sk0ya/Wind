@@ -45,6 +45,9 @@ public partial class SettingsViewModel : ObservableObject
     private string _selectedAppArguments = string.Empty;
 
     [ObservableProperty]
+    private string _closeWindowsOnExit = "None";
+
+    [ObservableProperty]
     private string _selectedTheme = "Dark";
 
     // Tile Sets
@@ -65,6 +68,7 @@ public partial class SettingsViewModel : ObservableObject
         var settings = _settingsManager.Settings;
 
         RunAtWindowsStartup = _settingsManager.IsRunAtWindowsStartup();
+        CloseWindowsOnExit = settings.CloseWindowsOnExit;
         SelectedTheme = settings.Theme;
         StartupApplications.Clear();
         foreach (var app in settings.StartupApplications)
@@ -125,6 +129,12 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnRunAtWindowsStartupChanged(bool value)
     {
         _settingsManager.SetRunAtWindowsStartup(value);
+    }
+
+    partial void OnCloseWindowsOnExitChanged(string value)
+    {
+        _settingsManager.Settings.CloseWindowsOnExit = value;
+        _settingsManager.SaveSettings();
     }
 
     partial void OnSelectedThemeChanged(string value)

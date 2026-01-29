@@ -46,6 +46,25 @@
                 <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                         CornerRadius="8" Padding="16" Margin="0,0,0,8">
                     <StackPanel>
+                        <TextBlock Text="Close Windows on Exit" FontWeight="SemiBold" Margin="0,0,0,4"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="Choose what happens to tab windows when Wind exits" FontSize="12" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <RadioButton Content="Release to desktop" GroupName="CloseWindowsOnExit" Margin="0,4"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     IsChecked="{Binding CloseWindowsOnExit, Converter={StaticResource StringEqualsConverter}, ConverterParameter=None}"/>
+                        <RadioButton Content="Close all windows" GroupName="CloseWindowsOnExit" Margin="0,4"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     IsChecked="{Binding CloseWindowsOnExit, Converter={StaticResource StringEqualsConverter}, ConverterParameter=All}"/>
+                        <RadioButton Content="Close startup windows only" GroupName="CloseWindowsOnExit" Margin="0,4"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     IsChecked="{Binding CloseWindowsOnExit, Converter={StaticResource StringEqualsConverter}, ConverterParameter=StartupOnly}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                        CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>

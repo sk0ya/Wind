@@ -28,6 +28,9 @@ public partial class TabItem : ObservableObject
     [ObservableProperty]
     private TabGroup? _group;
 
+    [ObservableProperty]
+    private bool _isLaunchedAtStartup;
+
     public TabItem()
     {
     }
