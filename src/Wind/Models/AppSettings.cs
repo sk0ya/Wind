@@ -5,8 +5,6 @@ public class AppSettings
     public bool RunAtWindowsStartup { get; set; } = false;
     public List<StartupApplication> StartupApplications { get; set; } = new();
     public string Theme { get; set; } = "Dark";
-    public bool AutoSaveSession { get; set; } = true;
-    public bool RestoreSessionOnStartup { get; set; } = true;
     public List<StartupGroup> StartupGroups { get; set; } = new();
 }
 

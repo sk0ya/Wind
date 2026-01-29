@@ -44,12 +44,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _selectedTheme = "Dark";
 
-    [ObservableProperty]
-    private bool _autoSaveSession = true;
-
-    [ObservableProperty]
-    private bool _restoreSessionOnStartup = true;
-
     // Tile Sets
     [ObservableProperty]
     private ObservableCollection<TileSetItem> _tileSets = new();
@@ -69,9 +63,6 @@ public partial class SettingsViewModel : ObservableObject
 
         RunAtWindowsStartup = _settingsManager.IsRunAtWindowsStartup();
         SelectedTheme = settings.Theme;
-        AutoSaveSession = settings.AutoSaveSession;
-        RestoreSessionOnStartup = settings.RestoreSessionOnStartup;
-
         StartupApplications.Clear();
         foreach (var app in settings.StartupApplications)
         {
@@ -124,18 +115,6 @@ public partial class SettingsViewModel : ObservableObject
         _settingsManager.Settings.Theme = value;
         _settingsManager.SaveSettings();
         ApplyTheme(value);
-    }
-
-    partial void OnAutoSaveSessionChanged(bool value)
-    {
-        _settingsManager.Settings.AutoSaveSession = value;
-        _settingsManager.SaveSettings();
-    }
-
-    partial void OnRestoreSessionOnStartupChanged(bool value)
-    {
-        _settingsManager.Settings.RestoreSessionOnStartup = value;
-        _settingsManager.SaveSettings();
     }
 
     [RelayCommand]

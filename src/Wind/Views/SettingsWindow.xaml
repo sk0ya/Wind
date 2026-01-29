@@ -222,44 +222,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Behavior Section -->
-                <TextBlock Text="Behavior" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
-                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
-                        CornerRadius="8" Padding="16" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="Auto-save Session" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock Text="Automatically save session on exit" FontSize="12"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoSaveSession, Mode=TwoWay}"/>
-                    </Grid>
-                </Border>
-
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
-                        CornerRadius="8" Padding="16" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="Restore Session on Startup" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock Text="Restore last session when Wind starts" FontSize="12"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding RestoreSessionOnStartup, Mode=TwoWay}"/>
-                    </Grid>
-                </Border>
-
                 <!-- Hotkeys Section -->
                 <TextBlock Text="Hotkeys" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>

@@ -6,7 +6,6 @@ A modern Windows application that allows you to manage multiple windows in a tab
 
 - **Tab Management**: Embed any Windows application into tabs
 - **Tab Groups**: Organize tabs into color-coded groups
-- **Session Management**: Save and restore your window sessions
 - **Hotkey Support**: Quick keyboard shortcuts for tab navigation
 - **Modern UI**: Windows 11 Fluent Design with Mica backdrop
 
@@ -53,11 +52,6 @@ src\Wind\bin\Debug\net8.0-windows\Wind.exe
 2. Drag tabs into groups to organize them
 3. Groups are color-coded for easy identification
 
-### Session Management
-- Click "Save Session" to save current tab configuration
-- Sessions are automatically restored on next launch
-- Session data is stored in `%LOCALAPPDATA%\Wind\session.json`
-
 ## Architecture
 
 ```
@@ -69,11 +63,9 @@ Wind/
 │   ├── WindowInfo.cs
 │   ├── TabItem.cs
 │   ├── TabGroup.cs
-│   └── SessionData.cs
 ├── Services/         # Business logic
 │   ├── WindowManager.cs
 │   ├── TabManager.cs
-│   ├── SessionManager.cs
 │   └── HotkeyManager.cs
 ├── ViewModels/       # MVVM ViewModels
 │   └── MainViewModel.cs

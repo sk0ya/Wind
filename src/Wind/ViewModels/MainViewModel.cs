@@ -13,7 +13,6 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly WindowManager _windowManager;
     private readonly TabManager _tabManager;
-    private readonly SessionManager _sessionManager;
     private readonly HotkeyManager _hotkeyManager;
     private readonly WindowPickerViewModel _windowPickerViewModel;
 
@@ -51,13 +50,11 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(
         WindowManager windowManager,
         TabManager tabManager,
-        SessionManager sessionManager,
         HotkeyManager hotkeyManager,
         WindowPickerViewModel windowPickerViewModel)
     {
         _windowManager = windowManager;
         _tabManager = tabManager;
-        _sessionManager = sessionManager;
         _hotkeyManager = hotkeyManager;
         _windowPickerViewModel = windowPickerViewModel;
 
@@ -237,20 +234,6 @@ public partial class MainViewModel : ObservableObject
     public void RemoveTabFromGroup(TabItem tab)
     {
         _tabManager.RemoveTabFromGroup(tab);
-    }
-
-    [RelayCommand]
-    private async Task SaveSession()
-    {
-        await _sessionManager.SaveSessionAsync(_tabManager);
-        StatusMessage = "Session saved";
-    }
-
-    [RelayCommand]
-    private async Task RestoreSession()
-    {
-        await _sessionManager.RestoreSessionAsync(_tabManager, _windowManager);
-        StatusMessage = "Session restored";
     }
 
     [RelayCommand]

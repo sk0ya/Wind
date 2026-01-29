@@ -22,7 +22,6 @@ public partial class App : Application
         // Services
         services.AddSingleton<WindowManager>();
         services.AddSingleton<TabManager>();
-        services.AddSingleton<SessionManager>();
         services.AddSingleton<SettingsManager>();
         services.AddSingleton<HotkeyManager>();
 
