@@ -38,6 +38,7 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
         SizeChanged += MainWindow_SizeChanged;
+        Activated += MainWindow_Activated;
         WindowHostContainer.SizeChanged += WindowHostContainer_SizeChanged;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -86,6 +87,15 @@ public partial class MainWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(WndProc);
+    }
+
+    private void MainWindow_Activated(object? sender, EventArgs e)
+    {
+        // When Wind window is activated, forward focus to the embedded window
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            _currentHost?.FocusHostedWindow();
+        });
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -444,6 +454,7 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
             {
                 UpdateWindowHostSize();
+                _currentHost?.FocusHostedWindow();
             });
         }
     }

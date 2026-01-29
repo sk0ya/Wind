@@ -93,9 +93,19 @@ public class WindowHost : HwndHost
         public string lpszClassName;
     }
 
+    private bool _isChromium;
+
     public WindowHost(IntPtr windowHandle)
     {
         _hostedWindowHandle = windowHandle;
+        _isChromium = IsChromiumWindow(windowHandle);
+    }
+
+    private static bool IsChromiumWindow(IntPtr hwnd)
+    {
+        var className = NativeMethods.GetWindowClassName(hwnd);
+        // Chrome, Edge, and other Chromium-based browsers use Chrome_WidgetWin_*
+        return className.StartsWith("Chrome_WidgetWin");
     }
 
     private static void EnsureClassRegistered()
@@ -161,12 +171,24 @@ public class WindowHost : HwndHost
         _originalExStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE);
         NativeMethods.GetWindowRect(_hostedWindowHandle, out _originalRect);
 
-        // Remove window decorations and make it a child window
+        // Remove window decorations
         int newStyle = _originalStyle;
         newStyle &= ~(int)(NativeMethods.WS_CAPTION | NativeMethods.WS_THICKFRAME |
                           NativeMethods.WS_MINIMIZEBOX | NativeMethods.WS_MAXIMIZEBOX |
                           NativeMethods.WS_SYSMENU | NativeMethods.WS_BORDER | NativeMethods.WS_DLGFRAME);
-        newStyle |= (int)(NativeMethods.WS_CHILD | NativeMethods.WS_VISIBLE);
+
+        if (_isChromium)
+        {
+            // Chromium apps break when made WS_CHILD — their multi-process input
+            // pipeline assumes a top-level window.  Use WS_POPUP + SetParent so the
+            // window is clipped to the host but still receives keyboard input normally.
+            newStyle &= ~(int)NativeMethods.WS_CHILD;
+            newStyle |= unchecked((int)NativeMethods.WS_POPUP) | (int)NativeMethods.WS_VISIBLE;
+        }
+        else
+        {
+            newStyle |= (int)(NativeMethods.WS_CHILD | NativeMethods.WS_VISIBLE);
+        }
 
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE, newStyle);
 
@@ -331,6 +353,13 @@ public class WindowHost : HwndHost
                 ResizeHostedWindow(width, height);
             }
         }
+    }
+
+    public void FocusHostedWindow()
+    {
+        if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
+        NativeMethods.SetForegroundWindow(_hostedWindowHandle);
+        NativeMethods.SetFocus(_hostedWindowHandle);
     }
 
     protected override IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
