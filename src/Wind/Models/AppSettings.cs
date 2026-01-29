@@ -7,6 +7,7 @@ public class AppSettings
     public string Theme { get; set; } = "Dark";
     public bool AutoSaveSession { get; set; } = true;
     public bool RestoreSessionOnStartup { get; set; } = true;
+    public List<StartupGroup> StartupGroups { get; set; } = new();
 }
 
 public class StartupApplication
@@ -14,4 +15,13 @@ public class StartupApplication
     public string Path { get; set; } = string.Empty;
     public string Arguments { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? Group { get; set; }
+    public string? Tile { get; set; }
+    public int? TilePosition { get; set; }
+}
+
+public class StartupGroup
+{
+    public string Name { get; set; } = string.Empty;
+    public string Color { get; set; } = "#6495ED";
 }

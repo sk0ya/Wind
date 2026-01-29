@@ -272,14 +272,19 @@ public partial class MainViewModel : ObservableObject
         _hotkeyManager.Dispose();
     }
 
-    public async Task EmbedStartupProcessesAsync(List<Process> processes)
+    public async Task EmbedStartupProcessesAsync(
+        List<(Process Process, StartupApplication Config)> processConfigs,
+        AppSettings settings)
     {
-        if (processes.Count == 0) return;
+        if (processConfigs.Count == 0) return;
 
         // Wait for windows to be created
         await Task.Delay(1500);
 
-        foreach (var process in processes)
+        // Embed each process and track the mapping from config to tab
+        var configTabPairs = new List<(StartupApplication Config, TabItem Tab)>();
+
+        foreach (var (process, config) in processConfigs)
         {
             try
             {
@@ -307,6 +312,7 @@ public partial class MainViewModel : ObservableObject
                     if (tab != null)
                     {
                         StatusMessage = $"Added: {tab.Title}";
+                        configTabPairs.Add((config, tab));
                     }
                 }
             }
@@ -314,6 +320,86 @@ public partial class MainViewModel : ObservableObject
             {
                 Debug.WriteLine($"Failed to embed process: {ex.Message}");
             }
+        }
+
+        // Apply groups from settings
+        ApplyStartupGroups(configTabPairs, settings);
+
+        // Apply tile layout from settings
+        ApplyStartupTile(configTabPairs);
+    }
+
+    private void ApplyStartupGroups(
+        List<(StartupApplication Config, TabItem Tab)> configTabPairs,
+        AppSettings settings)
+    {
+        // Build a lookup of group definitions
+        var groupDefs = settings.StartupGroups
+            .Where(g => !string.IsNullOrEmpty(g.Name))
+            .ToDictionary(g => g.Name, StringComparer.OrdinalIgnoreCase);
+
+        // Collect which group names are actually used
+        var usedGroupNames = configTabPairs
+            .Where(p => !string.IsNullOrEmpty(p.Config.Group))
+            .Select(p => p.Config.Group!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Create TabGroup objects for each used group name
+        var createdGroups = new Dictionary<string, TabGroup>(StringComparer.OrdinalIgnoreCase);
+        foreach (var groupName in usedGroupNames)
+        {
+            var color = Colors.CornflowerBlue;
+            if (groupDefs.TryGetValue(groupName, out var def))
+            {
+                color = TryParseColor(def.Color) ?? Colors.CornflowerBlue;
+            }
+
+            var group = _tabManager.CreateGroup(groupName, color);
+            createdGroups[groupName] = group;
+        }
+
+        // Assign tabs to groups
+        foreach (var (config, tab) in configTabPairs)
+        {
+            if (!string.IsNullOrEmpty(config.Group) && createdGroups.TryGetValue(config.Group, out var group))
+            {
+                _tabManager.AddTabToGroup(tab, group);
+            }
+        }
+    }
+
+    private void ApplyStartupTile(List<(StartupApplication Config, TabItem Tab)> configTabPairs)
+    {
+        // Group tabs by tile name
+        var tileGroups = configTabPairs
+            .Where(p => !string.IsNullOrEmpty(p.Config.Tile))
+            .GroupBy(p => p.Config.Tile!, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() >= 2);
+
+        foreach (var tileGroup in tileGroups)
+        {
+            // Sort by TilePosition, then by original order
+            var orderedTabs = tileGroup
+                .OrderBy(p => p.Config.TilePosition ?? int.MaxValue)
+                .Select(p => p.Tab)
+                .ToList();
+
+            _tabManager.StartTile(orderedTabs);
+            StatusMessage = $"Tiled {orderedTabs.Count} tabs";
+            break; // Only one tile layout can be active at a time
+        }
+    }
+
+    private static Color? TryParseColor(string colorString)
+    {
+        try
+        {
+            return (Color)ColorConverter.ConvertFromString(colorString);
+        }
+        catch
+        {
+            return null;
         }
     }
 }

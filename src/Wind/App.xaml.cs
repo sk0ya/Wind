@@ -55,11 +55,11 @@ public partial class App : Application
         mainWindow.Show();
 
         // Launch startup applications and embed them
-        var processes = settingsManager.LaunchStartupApplications();
-        if (processes.Count > 0)
+        var processConfigs = settingsManager.LaunchStartupApplications();
+        if (processConfigs.Count > 0)
         {
             var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
-            await viewModel.EmbedStartupProcessesAsync(processes);
+            await viewModel.EmbedStartupProcessesAsync(processConfigs, settingsManager.Settings);
         }
     }
 

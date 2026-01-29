@@ -8,6 +8,26 @@ using Wind.Services;
 
 namespace Wind.ViewModels;
 
+public partial class TileSetItem : ObservableObject
+{
+    [ObservableProperty]
+    private string _name;
+
+    [ObservableProperty]
+    private ObservableCollection<StartupApplication> _apps = new();
+
+    [ObservableProperty]
+    private StartupApplication? _selectedApp;
+
+    [ObservableProperty]
+    private StartupApplication? _appToAdd;
+
+    public TileSetItem(string name)
+    {
+        _name = name;
+    }
+}
+
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsManager _settingsManager;
@@ -30,6 +50,13 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _restoreSessionOnStartup = true;
 
+    // Tile Sets
+    [ObservableProperty]
+    private ObservableCollection<TileSetItem> _tileSets = new();
+
+    [ObservableProperty]
+    private string _newTileSetName = string.Empty;
+
     public SettingsViewModel(SettingsManager settingsManager)
     {
         _settingsManager = settingsManager;
@@ -50,6 +77,41 @@ public partial class SettingsViewModel : ObservableObject
         {
             StartupApplications.Add(app);
         }
+
+        RebuildTileSets();
+    }
+
+    private void RebuildTileSets()
+    {
+        TileSets.Clear();
+        var tileGroups = StartupApplications
+            .Where(a => !string.IsNullOrEmpty(a.Tile))
+            .GroupBy(a => a.Tile!)
+            .OrderBy(g => g.Key);
+
+        foreach (var group in tileGroups)
+        {
+            var tileSet = new TileSetItem(group.Key);
+            foreach (var app in group.OrderBy(a => a.TilePosition ?? int.MaxValue))
+            {
+                tileSet.Apps.Add(app);
+            }
+            TileSets.Add(tileSet);
+        }
+    }
+
+    public ObservableCollection<StartupApplication> GetAvailableAppsForTileSet()
+    {
+        var usedApps = TileSets.SelectMany(ts => ts.Apps).ToHashSet();
+        var available = new ObservableCollection<StartupApplication>();
+        foreach (var app in StartupApplications)
+        {
+            if (!usedApps.Contains(app))
+            {
+                available.Add(app);
+            }
+        }
+        return available;
     }
 
     partial void OnRunAtWindowsStartupChanged(bool value)
@@ -108,9 +170,99 @@ public partial class SettingsViewModel : ObservableObject
     {
         if (SelectedStartupApplication == null) return;
 
+        // Also remove from any tile set
+        foreach (var ts in TileSets)
+        {
+            ts.Apps.Remove(SelectedStartupApplication);
+        }
+
         _settingsManager.RemoveStartupApplication(SelectedStartupApplication.Path);
         StartupApplications.Remove(SelectedStartupApplication);
         SelectedStartupApplication = null;
+    }
+
+    // --- Tile Set commands ---
+
+    [RelayCommand]
+    private void AddTileSet()
+    {
+        if (string.IsNullOrWhiteSpace(NewTileSetName)) return;
+        if (TileSets.Any(ts => ts.Name.Equals(NewTileSetName, StringComparison.OrdinalIgnoreCase))) return;
+
+        TileSets.Add(new TileSetItem(NewTileSetName));
+        NewTileSetName = string.Empty;
+    }
+
+    [RelayCommand]
+    private void RemoveTileSet(TileSetItem tileSet)
+    {
+        foreach (var app in tileSet.Apps)
+        {
+            app.Tile = null;
+            app.TilePosition = null;
+            _settingsManager.UpdateStartupApplication(app);
+        }
+        TileSets.Remove(tileSet);
+    }
+
+    [RelayCommand]
+    private void AddAppToTileSet(TileSetItem tileSet)
+    {
+        if (tileSet.AppToAdd == null) return;
+
+        var app = tileSet.AppToAdd;
+        app.Tile = tileSet.Name;
+        app.TilePosition = tileSet.Apps.Count;
+        tileSet.Apps.Add(app);
+        tileSet.AppToAdd = null;
+        _settingsManager.UpdateStartupApplication(app);
+    }
+
+    [RelayCommand]
+    private void RemoveAppFromTileSet(TileSetItem tileSet)
+    {
+        if (tileSet.SelectedApp == null) return;
+
+        var app = tileSet.SelectedApp;
+        app.Tile = null;
+        app.TilePosition = null;
+        tileSet.Apps.Remove(app);
+        tileSet.SelectedApp = null;
+        UpdateTilePositions(tileSet);
+        _settingsManager.UpdateStartupApplication(app);
+    }
+
+    [RelayCommand]
+    private void MoveAppUpInTileSet(TileSetItem tileSet)
+    {
+        if (tileSet.SelectedApp == null) return;
+
+        var index = tileSet.Apps.IndexOf(tileSet.SelectedApp);
+        if (index <= 0) return;
+
+        tileSet.Apps.Move(index, index - 1);
+        UpdateTilePositions(tileSet);
+    }
+
+    [RelayCommand]
+    private void MoveAppDownInTileSet(TileSetItem tileSet)
+    {
+        if (tileSet.SelectedApp == null) return;
+
+        var index = tileSet.Apps.IndexOf(tileSet.SelectedApp);
+        if (index < 0 || index >= tileSet.Apps.Count - 1) return;
+
+        tileSet.Apps.Move(index, index + 1);
+        UpdateTilePositions(tileSet);
+    }
+
+    private void UpdateTilePositions(TileSetItem tileSet)
+    {
+        for (int i = 0; i < tileSet.Apps.Count; i++)
+        {
+            tileSet.Apps[i].TilePosition = i;
+            _settingsManager.UpdateStartupApplication(tileSet.Apps[i]);
+        }
     }
 
     private void ApplyTheme(string theme)

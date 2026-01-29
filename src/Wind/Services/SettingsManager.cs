@@ -139,9 +139,51 @@ public class SettingsManager
         }
     }
 
-    public List<Process> LaunchStartupApplications()
+    public void UpdateStartupApplication(StartupApplication app)
     {
-        var processes = new List<Process>();
+        var existing = _settings.StartupApplications
+            .FirstOrDefault(a => a.Path.Equals(app.Path, StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            existing.Group = app.Group;
+            existing.Tile = app.Tile;
+            existing.TilePosition = app.TilePosition;
+            SaveSettings();
+        }
+    }
+
+    public void AddStartupGroup(string name, string color)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        if (_settings.StartupGroups.Any(g => g.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        _settings.StartupGroups.Add(new StartupGroup
+        {
+            Name = name,
+            Color = color
+        });
+
+        SaveSettings();
+    }
+
+    public void RemoveStartupGroup(string name)
+    {
+        var group = _settings.StartupGroups
+            .FirstOrDefault(g => g.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        if (group != null)
+        {
+            _settings.StartupGroups.Remove(group);
+            SaveSettings();
+        }
+    }
+
+    public List<(Process Process, StartupApplication Config)> LaunchStartupApplications()
+    {
+        var results = new List<(Process, StartupApplication)>();
 
         foreach (var app in _settings.StartupApplications)
         {
@@ -159,7 +201,7 @@ public class SettingsManager
                 var process = Process.Start(startInfo);
                 if (process != null)
                 {
-                    processes.Add(process);
+                    results.Add((process, app));
                 }
             }
             catch (Exception ex)
@@ -168,6 +210,6 @@ public class SettingsManager
             }
         }
 
-        return processes;
+        return results;
     }
 }
