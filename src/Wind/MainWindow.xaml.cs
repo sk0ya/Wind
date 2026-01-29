@@ -64,6 +64,18 @@ public partial class MainWindow : Window
         {
             WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         };
+
+        _tabManager.TileLayoutUpdated += (s, e) =>
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                if (_viewModel.CurrentTileLayout != null)
+                {
+                    ClearTileLayout();
+                    BuildTileLayout(_viewModel.CurrentTileLayout);
+                }
+            });
+        };
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)

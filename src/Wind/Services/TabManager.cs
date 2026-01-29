@@ -51,6 +51,7 @@ public class TabManager
     public event EventHandler<TabItem>? TabAdded;
     public event EventHandler<TabItem>? TabRemoved;
     public event EventHandler<TileLayout?>? TileLayoutChanged;
+    public event EventHandler? TileLayoutUpdated;
     public event EventHandler? MinimizeRequested;
     public event EventHandler? MaximizeRequested;
 
@@ -102,6 +103,9 @@ public class TabManager
             return;
         }
 
+        // Update tile layout if this tab was tiled
+        UpdateTileForRemovedTab(tab);
+
         // Remove the tab without trying to release the window (it's already closed)
         if (_windowHosts.TryGetValue(tab.Id, out var host))
         {
@@ -133,6 +137,9 @@ public class TabManager
 
     public void RemoveTab(TabItem tab)
     {
+        // Update tile layout if this tab was tiled
+        UpdateTileForRemovedTab(tab);
+
         if (_windowHosts.TryGetValue(tab.Id, out var host))
         {
             _windowManager.ReleaseWindow(host);
@@ -309,5 +316,22 @@ public class TabManager
 
         CurrentTileLayout.Deactivate();
         CurrentTileLayout = null;
+    }
+
+    private void UpdateTileForRemovedTab(TabItem tab)
+    {
+        if (CurrentTileLayout == null || !tab.IsTiled) return;
+
+        var hasEnoughTabs = CurrentTileLayout.RemoveTab(tab);
+        if (hasEnoughTabs)
+        {
+            // Rebuild the tile layout with remaining tabs
+            TileLayoutUpdated?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            // Not enough tabs to tile, stop tiling
+            StopTile();
+        }
     }
 }

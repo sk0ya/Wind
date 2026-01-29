@@ -20,6 +20,13 @@ public partial class TileLayout : ObservableObject
         IsActive = true;
     }
 
+    public bool RemoveTab(TabItem tab)
+    {
+        tab.IsTiled = false;
+        TiledTabs.Remove(tab);
+        return TiledTabs.Count >= 2;
+    }
+
     public void Deactivate()
     {
         foreach (var tab in TiledTabs)
