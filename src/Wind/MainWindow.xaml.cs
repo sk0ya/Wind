@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly List<WindowHost> _tiledHosts = new();
     private Views.SettingsPage? _settingsPage;
     private string _currentTabPosition = "Top";
+    private WindowResizeHelper? _resizeHelper;
 
     public MainWindow()
     {
@@ -299,29 +300,25 @@ public partial class MainWindow : Window
 
     private void ApplyLeftLayout()
     {
-        // Grid: 2 rows (6px drag, *), 3 columns (Auto tabbar, 1px separator, * content)
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+        // Grid: 1 row, 3 columns (Auto tabbar, 1px separator, * content)
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // DragBar: Row 0, spans all columns
-        DragBar.Visibility = Visibility.Visible;
-        Grid.SetRow(DragBar, 0);
-        Grid.SetColumn(DragBar, 0);
-        Grid.SetColumnSpan(DragBar, 3);
+        // DragBar hidden — drag is handled by the tab bar area
+        DragBar.Visibility = Visibility.Collapsed;
 
-        // TabBarArea: Row 1, Column 0 (vertical)
-        Grid.SetRow(TabBarArea, 1);
+        // TabBarArea: Row 0, Column 0 (vertical)
+        Grid.SetRow(TabBarArea, 0);
         Grid.SetColumn(TabBarArea, 0);
         TabBarArea.MinWidth = 180;
         TabBarArea.MaxWidth = 300;
 
-        // Separator: Row 1, Column 1
+        // Separator: Row 0, Column 1
         TabBarSeparator.Visibility = Visibility.Visible;
         TabBarSeparator.Width = 1;
-        Grid.SetRow(TabBarSeparator, 1);
+        Grid.SetRow(TabBarSeparator, 0);
         Grid.SetColumn(TabBarSeparator, 1);
 
         // TabBarArea internal: 2 rows [ScrollViewer | ButtonsPanel]
@@ -333,45 +330,40 @@ public partial class MainWindow : Window
         Grid.SetColumn(WindowControlsPanel, 0);
         WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-        // ContentPanel: Row 1, Column 2
-        Grid.SetRow(ContentPanel, 1);
+        // ContentPanel: Row 0, Column 2
+        Grid.SetRow(ContentPanel, 0);
         Grid.SetColumn(ContentPanel, 2);
 
         // Overlay spans everything
-        Grid.SetRowSpan(WindowPickerOverlay, 2);
+        Grid.SetRowSpan(WindowPickerOverlay, 1);
         Grid.SetColumnSpan(WindowPickerOverlay, 3);
 
-        // CaptionHeight for thin drag bar
-        Chrome.CaptionHeight = 6;
+        Chrome.CaptionHeight = 0;
     }
 
     private void ApplyRightLayout()
     {
-        // Grid: 2 rows (6px drag, *), 3 columns (* content, 1px separator, Auto tabbar)
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+        // Grid: 1 row, 3 columns (* content, 1px separator, Auto tabbar)
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // DragBar: Row 0, spans all columns
-        DragBar.Visibility = Visibility.Visible;
-        Grid.SetRow(DragBar, 0);
-        Grid.SetColumn(DragBar, 0);
-        Grid.SetColumnSpan(DragBar, 3);
+        // DragBar hidden — drag is handled by the tab bar area
+        DragBar.Visibility = Visibility.Collapsed;
 
-        // ContentPanel: Row 1, Column 0
-        Grid.SetRow(ContentPanel, 1);
+        // ContentPanel: Row 0, Column 0
+        Grid.SetRow(ContentPanel, 0);
         Grid.SetColumn(ContentPanel, 0);
 
-        // Separator: Row 1, Column 1
+        // Separator: Row 0, Column 1
         TabBarSeparator.Visibility = Visibility.Visible;
         TabBarSeparator.Width = 1;
-        Grid.SetRow(TabBarSeparator, 1);
+        Grid.SetRow(TabBarSeparator, 0);
         Grid.SetColumn(TabBarSeparator, 1);
 
-        // TabBarArea: Row 1, Column 2 (vertical)
-        Grid.SetRow(TabBarArea, 1);
+        // TabBarArea: Row 0, Column 2 (vertical)
+        Grid.SetRow(TabBarArea, 0);
         Grid.SetColumn(TabBarArea, 2);
         TabBarArea.MinWidth = 180;
         TabBarArea.MaxWidth = 300;
@@ -386,11 +378,10 @@ public partial class MainWindow : Window
         WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
 
         // Overlay spans everything
-        Grid.SetRowSpan(WindowPickerOverlay, 2);
+        Grid.SetRowSpan(WindowPickerOverlay, 1);
         Grid.SetColumnSpan(WindowPickerOverlay, 3);
 
-        // CaptionHeight for thin drag bar
-        Chrome.CaptionHeight = 6;
+        Chrome.CaptionHeight = 0;
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -401,6 +392,9 @@ public partial class MainWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(WndProc);
+
+        // Create resize grip overlay windows at the window edges
+        _resizeHelper = new WindowResizeHelper(hwnd);
     }
 
     private void MainWindow_Activated(object? sender, EventArgs e)
@@ -464,12 +458,15 @@ public partial class MainWindow : Window
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _settingsManager.TabHeaderPositionChanged -= OnTabHeaderPositionChanged;
+        _resizeHelper?.Dispose();
+        _resizeHelper = null;
         _viewModel.Cleanup();
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateWindowHostSize();
+        _resizeHelper?.UpdatePositions();
     }
 
     private void WindowHostContainer_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -484,11 +481,13 @@ public partial class MainWindow : Window
         {
             MaximizeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.SquareMultiple24;
             MainBorder.BorderThickness = new Thickness(0);
+            _resizeHelper?.SetVisible(false);
         }
         else
         {
             MaximizeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Maximize24;
             MainBorder.BorderThickness = new Thickness(1);
+            _resizeHelper?.SetVisible(true);
         }
 
         UpdateWindowHostSize();
@@ -666,6 +665,7 @@ public partial class MainWindow : Window
     private void AddWindowButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.OpenWindowPickerCommand.Execute(null);
+        _resizeHelper?.SetVisible(false);
         // Hide embedded window(s) while picker is open
         if (_viewModel.IsTileVisible)
         {
@@ -689,6 +689,8 @@ public partial class MainWindow : Window
         {
             _currentHost.Visibility = Visibility.Visible;
         }
+        if (WindowState != WindowState.Maximized)
+            _resizeHelper?.SetVisible(true);
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -822,6 +824,7 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
             {
                 UpdateWindowHostSize();
+                _resizeHelper?.BringToTop();
             });
 
             Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
