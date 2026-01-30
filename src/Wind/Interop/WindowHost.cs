@@ -99,6 +99,20 @@ public class WindowHost : HwndHost
     {
         _hostedWindowHandle = windowHandle;
         _isChromium = IsChromiumWindow(windowHandle);
+
+        // Save original state immediately for later restoration.
+        _originalStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE);
+        _originalExStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE);
+        NativeMethods.GetWindowRect(_hostedWindowHandle, out _originalRect);
+
+        // Remove taskbar button and hide the window right away.
+        // The window will be shown inside Wind when BuildWindowCore runs
+        // (i.e. when this host enters the WPF visual tree).
+        int newExStyle = _originalExStyle;
+        newExStyle &= ~(int)NativeMethods.WS_EX_APPWINDOW;
+        newExStyle |= (int)NativeMethods.WS_EX_TOOLWINDOW;
+        NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, newExStyle);
+        NativeMethods.ShowWindow(_hostedWindowHandle, 0); // SW_HIDE = 0
     }
 
     private static bool IsChromiumWindow(IntPtr hwnd)
@@ -166,12 +180,7 @@ public class WindowHost : HwndHost
             return new HandleRef(this, IntPtr.Zero);
         }
 
-        // Store original state for restoration
-        _originalStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE);
-        _originalExStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE);
-        NativeMethods.GetWindowRect(_hostedWindowHandle, out _originalRect);
-
-        // Remove window decorations
+        // Remove window decorations (original state was saved in constructor)
         int newStyle = _originalStyle;
         newStyle &= ~(int)(NativeMethods.WS_CAPTION | NativeMethods.WS_THICKFRAME |
                           NativeMethods.WS_MINIMIZEBOX | NativeMethods.WS_MAXIMIZEBOX |

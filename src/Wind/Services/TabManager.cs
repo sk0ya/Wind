@@ -61,7 +61,7 @@ public class TabManager
         _dispatcher = Dispatcher.CurrentDispatcher;
     }
 
-    public TabItem? AddTab(WindowInfo windowInfo)
+    public TabItem? AddTab(WindowInfo windowInfo, bool activate = true)
     {
         if (windowInfo.Handle == IntPtr.Zero) return null;
 
@@ -69,7 +69,8 @@ public class TabManager
         var existingTab = Tabs.FirstOrDefault(t => t.Window?.Handle == windowInfo.Handle);
         if (existingTab != null)
         {
-            ActiveTab = existingTab;
+            if (activate)
+                ActiveTab = existingTab;
             return existingTab;
         }
 
@@ -88,8 +89,8 @@ public class TabManager
 
         TabAdded?.Invoke(this, tab);
 
-        // Always activate newly added tab
-        ActiveTab = tab;
+        if (activate)
+            ActiveTab = tab;
 
         return tab;
     }

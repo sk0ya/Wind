@@ -307,7 +307,7 @@ public partial class MainViewModel : ObservableObject
 
                 if (windowInfo != null)
                 {
-                    var tab = _tabManager.AddTab(windowInfo);
+                    var tab = _tabManager.AddTab(windowInfo, activate: false);
                     if (tab != null)
                     {
                         tab.IsLaunchedAtStartup = true;
@@ -327,6 +327,24 @@ public partial class MainViewModel : ObservableObject
 
         // Apply tile layout from settings
         ApplyStartupTile(configTabPairs);
+
+        // Activate the correct tab now that all tabs, groups, and tiles are set up.
+        // During the loop above, tabs were added without activation to avoid
+        // rapid ActiveTab changes that cause display inconsistencies
+        // (each change triggers Dispatcher.BeginInvoke for UpdateWindowHost,
+        // but only the last one's window actually gets embedded via BuildWindowCore).
+        if (IsTiled)
+        {
+            // If a tile layout is active, select the first tiled tab
+            // so OnActiveTabChanged shows the tile view.
+            var firstTiledTab = _tabManager.Tabs.FirstOrDefault(t => t.IsTiled);
+            if (firstTiledTab != null)
+                _tabManager.ActiveTab = firstTiledTab;
+        }
+        else if (_tabManager.Tabs.Count > 0)
+        {
+            _tabManager.ActiveTab = _tabManager.Tabs.Last();
+        }
     }
 
     private void ApplyStartupGroups(
