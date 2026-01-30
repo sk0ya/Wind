@@ -93,9 +93,19 @@ public partial class MainWindow : Window
     private void MainWindow_Activated(object? sender, EventArgs e)
     {
         // When Wind window is activated, forward focus to the embedded window
+        // only if the mouse is over the content area (not the title bar).
         Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
-            _currentHost?.FocusHostedWindow();
+            if (_currentHost == null) return;
+
+            var pos = Mouse.GetPosition(this);
+            // Row 0 is the title bar (36px). Only forward focus when the
+            // mouse is below it so that clicks on tabs / +button / window
+            // controls are not stolen by the hosted (Chromium) window.
+            if (pos.Y > 36)
+            {
+                _currentHost.FocusHostedWindow();
+            }
         });
     }
 

@@ -18,6 +18,7 @@ public partial class WindowPickerViewModel : ObservableObject
     private readonly ICollectionView _windowsView;
     private readonly ObservableCollection<WindowInfo> _availableWindows;
     private readonly DispatcherTimer _refreshTimer;
+    private CancellationTokenSource? _launchCts;
 
     public ObservableCollection<WindowInfo> AvailableWindows => _availableWindows;
 
@@ -34,6 +35,9 @@ public partial class WindowPickerViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _hasQuickLaunchApps;
+
+    [ObservableProperty]
+    private bool _isLaunching;
 
     public event EventHandler<WindowInfo>? WindowSelected;
     public event EventHandler? Cancelled;
@@ -75,6 +79,9 @@ public partial class WindowPickerViewModel : ObservableObject
     public void Stop()
     {
         _refreshTimer.Stop();
+        _launchCts?.Cancel();
+        _launchCts = null;
+        IsLaunching = false;
     }
 
     private void RefreshWindowList()
@@ -150,8 +157,14 @@ public partial class WindowPickerViewModel : ObservableObject
     {
         if (app == null) return;
 
+        _launchCts?.Cancel();
+        _launchCts = new CancellationTokenSource();
+        var ct = _launchCts.Token;
+
         try
         {
+            IsLaunching = true;
+
             // Snapshot existing window handles before launch
             var existingHandles = new HashSet<IntPtr>(
                 _windowManager.EnumerateWindows().Select(w => w.Handle));
@@ -190,12 +203,14 @@ public partial class WindowPickerViewModel : ObservableObject
             WindowInfo? newWindow = null;
             for (int i = 0; i < 100; i++)
             {
-                await Task.Delay(100);
+                await Task.Delay(100, ct);
                 var current = _windowManager.EnumerateWindows();
                 newWindow = current.FirstOrDefault(w => !existingHandles.Contains(w.Handle));
                 if (newWindow != null)
                     break;
             }
+
+            IsLaunching = false;
 
             if (newWindow == null) return;
 
@@ -206,9 +221,17 @@ public partial class WindowPickerViewModel : ObservableObject
                 WindowSelected?.Invoke(this, windowInfo);
             }
         }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by user (e.g. Cancel button or new launch)
+        }
         catch (Exception ex)
         {
             Debug.WriteLine($"Failed to launch quick app {app.Name}: {ex.Message}");
+        }
+        finally
+        {
+            IsLaunching = false;
         }
     }
 }

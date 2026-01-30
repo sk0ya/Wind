@@ -271,8 +271,8 @@
                   Panel.ZIndex="100"
                   Visibility="{Binding IsWindowPickerOpen, Converter={StaticResource BoolToVisibility}}">
                 <views:WindowPicker x:Name="WindowPickerControl"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    Width="500" Height="400"/>
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                    Margin="24"/>
             </Grid>
         </Grid>
     </Border>

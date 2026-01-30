@@ -20,58 +20,46 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                <TextBlock Text="Select a Window" FontSize="24" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                <TextBlock Text="Choose a window to add to Wind" Margin="0,4,0,0"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-            </StackPanel>
-
             <!-- Quick Launch -->
-            <StackPanel Grid.Row="1" Margin="0,0,0,12"
-                        Visibility="{Binding HasQuickLaunchApps, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TextBlock Text="Quick Launch" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding QuickLaunchApps}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <ui:Button Margin="0,0,8,0" Padding="12,8"
-                                           Appearance="Secondary"
-                                           Command="{Binding DataContext.LaunchQuickAppCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                           CommandParameter="{Binding}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="WindowConsole20" Margin="0,0,6,0"
-                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+            <ScrollViewer Grid.Row="0" MaxHeight="120" Margin="0,0,0,12"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Visibility="{Binding HasQuickLaunchApps, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ItemsControl ItemsSource="{Binding QuickLaunchApps}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ui:Button Margin="0,0,8,8" Padding="12,8"
+                                       Appearance="Secondary"
+                                       Command="{Binding DataContext.LaunchQuickAppCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                       CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="WindowConsole20" Margin="0,0,6,0"
                                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    </StackPanel>
-                                </ui:Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </StackPanel>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+                            </ui:Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
             <!-- Search -->
-            <ui:TextBox Grid.Row="2" Margin="0,0,0,12"
+            <ui:TextBox Grid.Row="1" Margin="0,0,0,12"
                         PlaceholderText="Search windows..."
                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                         Icon="{ui:SymbolIcon Search24}"/>
 
             <!-- Window List -->
-            <Border Grid.Row="3" Background="{DynamicResource ControlFillColorDefaultBrush}"
+            <Border Grid.Row="2" Background="{DynamicResource ControlFillColorDefaultBrush}"
                     CornerRadius="8" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                     BorderThickness="1">
                 <ListView ItemsSource="{Binding WindowsView}"
@@ -112,8 +100,9 @@
             </Border>
 
             <!-- Buttons -->
-            <Grid Grid.Row="4" Margin="0,16,0,0">
+            <Grid Grid.Row="3" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -123,10 +112,15 @@
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
-                <ui:Button Grid.Column="1" Content="Cancel"
+                <TextBlock Grid.Column="1" Text="Launching..."
+                           VerticalAlignment="Center" Margin="12,0,0,0"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Visibility="{Binding IsLaunching, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                <ui:Button Grid.Column="2" Content="Cancel"
                            Command="{Binding CancelCommand}"
                            Appearance="Secondary" Padding="24,8" Margin="0,0,8,0"/>
-                <ui:Button Grid.Column="2" Content="Add Window"
+                <ui:Button Grid.Column="3" Content="Add Window"
                            Command="{Binding SelectCommand}"
                            Appearance="Primary" Padding="24,8"
                            IsEnabled="{Binding SelectedWindow, Converter={StaticResource NotNullConverter}}"/>
