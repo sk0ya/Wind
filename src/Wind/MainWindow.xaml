@@ -258,9 +258,10 @@
                 <!-- Internal row/column definitions set by code-behind -->
 
                 <ScrollViewer x:Name="TabScrollViewer"
-                              HorizontalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Hidden"
                               VerticalScrollBarVisibility="Disabled"
                               WindowChrome.IsHitTestVisibleInChrome="True"
+                              PreviewMouseWheel="TabScrollViewer_PreviewMouseWheel"
                               PreviewMouseLeftButtonDown="TabArea_PreviewMouseLeftButtonDown">
                     <StackPanel x:Name="TabsPanel" Orientation="Horizontal">
                         <ItemsControl x:Name="TabItemsControl" ItemsSource="{Binding Tabs}"

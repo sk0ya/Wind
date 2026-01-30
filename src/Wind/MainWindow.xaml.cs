@@ -155,7 +155,7 @@ public partial class MainWindow : Window
             TabItemsControl.ItemTemplate = (DataTemplate)FindResource("VerticalTabItemTemplate");
             TabsPanel.Orientation = Orientation.Vertical;
             TabScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            TabScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            TabScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
             WindowControlsPanel.Orientation = Orientation.Horizontal;
             AddWindowButton.Width = double.NaN;
             AddWindowButton.Height = 36;
@@ -166,7 +166,7 @@ public partial class MainWindow : Window
             TabItemsControl.ItemsPanel = (ItemsPanelTemplate)FindResource("HorizontalTabPanel");
             TabItemsControl.ItemTemplate = (DataTemplate)FindResource("HorizontalTabItemTemplate");
             TabsPanel.Orientation = Orientation.Horizontal;
-            TabScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            TabScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
             TabScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
             WindowControlsPanel.Orientation = Orientation.Horizontal;
             AddWindowButton.Width = 36;
@@ -520,6 +520,17 @@ public partial class MainWindow : Window
         {
             StartDragTracking(e);
         }
+    }
+
+    private void TabScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (_currentTabPosition is "Top" or "Bottom")
+        {
+            // Horizontal tabs: convert vertical wheel to horizontal scroll
+            TabScrollViewer.ScrollToHorizontalOffset(TabScrollViewer.HorizontalOffset - e.Delta);
+            e.Handled = true;
+        }
+        // Vertical tabs (Left/Right): default vertical scroll works
     }
 
     private void TabArea_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
