@@ -107,7 +107,7 @@ public partial class MainWindow : Window
         TabBarArea.ColumnDefinitions.Clear();
 
         // Reset Grid attached properties for all major elements to defaults
-        UIElement[] elements = [DragBar, TabBarArea, ContentPanel, WindowPickerOverlay, TabScrollViewer, WindowControlsPanel];
+        UIElement[] elements = [DragBar, TabBarArea, TabBarSeparator, ContentPanel, WindowPickerOverlay, TabScrollViewer, WindowControlsPanel];
         foreach (var el in elements)
         {
             Grid.SetRow(el, 0);
@@ -128,8 +128,11 @@ public partial class MainWindow : Window
         WindowControlsPanel.ClearValue(HorizontalAlignmentProperty);
         WindowControlsPanel.ClearValue(VerticalAlignmentProperty);
 
-        // Reset DragBar
+        // Reset DragBar and Separator
         DragBar.Visibility = Visibility.Collapsed;
+        TabBarSeparator.Visibility = Visibility.Collapsed;
+        TabBarSeparator.ClearValue(WidthProperty);
+        TabBarSeparator.ClearValue(HeightProperty);
     }
 
     private void ApplyTabHeaderPosition(string position)
@@ -296,24 +299,30 @@ public partial class MainWindow : Window
 
     private void ApplyLeftLayout()
     {
-        // Grid: 2 rows (6px drag, *), 2 columns (Auto tabbar, * content)
+        // Grid: 2 rows (6px drag, *), 3 columns (Auto tabbar, 1px separator, * content)
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // DragBar: Row 0, spans both columns
+        // DragBar: Row 0, spans all columns
         DragBar.Visibility = Visibility.Visible;
         Grid.SetRow(DragBar, 0);
         Grid.SetColumn(DragBar, 0);
-        Grid.SetColumnSpan(DragBar, 2);
+        Grid.SetColumnSpan(DragBar, 3);
 
         // TabBarArea: Row 1, Column 0 (vertical)
         Grid.SetRow(TabBarArea, 1);
         Grid.SetColumn(TabBarArea, 0);
-        Grid.SetColumnSpan(TabBarArea, 1);
         TabBarArea.MinWidth = 180;
         TabBarArea.MaxWidth = 300;
+
+        // Separator: Row 1, Column 1
+        TabBarSeparator.Visibility = Visibility.Visible;
+        TabBarSeparator.Width = 1;
+        Grid.SetRow(TabBarSeparator, 1);
+        Grid.SetColumn(TabBarSeparator, 1);
 
         // TabBarArea internal: 2 rows [ScrollViewer | ButtonsPanel]
         TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -324,14 +333,13 @@ public partial class MainWindow : Window
         Grid.SetColumn(WindowControlsPanel, 0);
         WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-        // ContentPanel: Row 1, Column 1
+        // ContentPanel: Row 1, Column 2
         Grid.SetRow(ContentPanel, 1);
-        Grid.SetColumn(ContentPanel, 1);
-        Grid.SetColumnSpan(ContentPanel, 1);
+        Grid.SetColumn(ContentPanel, 2);
 
         // Overlay spans everything
         Grid.SetRowSpan(WindowPickerOverlay, 2);
-        Grid.SetColumnSpan(WindowPickerOverlay, 2);
+        Grid.SetColumnSpan(WindowPickerOverlay, 3);
 
         // CaptionHeight for thin drag bar
         Chrome.CaptionHeight = 6;
@@ -339,27 +347,32 @@ public partial class MainWindow : Window
 
     private void ApplyRightLayout()
     {
-        // Grid: 2 rows (6px drag, *), 2 columns (* content, Auto tabbar)
+        // Grid: 2 rows (6px drag, *), 3 columns (* content, 1px separator, Auto tabbar)
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // DragBar: Row 0, spans both columns
+        // DragBar: Row 0, spans all columns
         DragBar.Visibility = Visibility.Visible;
         Grid.SetRow(DragBar, 0);
         Grid.SetColumn(DragBar, 0);
-        Grid.SetColumnSpan(DragBar, 2);
+        Grid.SetColumnSpan(DragBar, 3);
 
         // ContentPanel: Row 1, Column 0
         Grid.SetRow(ContentPanel, 1);
         Grid.SetColumn(ContentPanel, 0);
-        Grid.SetColumnSpan(ContentPanel, 1);
 
-        // TabBarArea: Row 1, Column 1 (vertical)
+        // Separator: Row 1, Column 1
+        TabBarSeparator.Visibility = Visibility.Visible;
+        TabBarSeparator.Width = 1;
+        Grid.SetRow(TabBarSeparator, 1);
+        Grid.SetColumn(TabBarSeparator, 1);
+
+        // TabBarArea: Row 1, Column 2 (vertical)
         Grid.SetRow(TabBarArea, 1);
-        Grid.SetColumn(TabBarArea, 1);
-        Grid.SetColumnSpan(TabBarArea, 1);
+        Grid.SetColumn(TabBarArea, 2);
         TabBarArea.MinWidth = 180;
         TabBarArea.MaxWidth = 300;
 
@@ -374,7 +387,7 @@ public partial class MainWindow : Window
 
         // Overlay spans everything
         Grid.SetRowSpan(WindowPickerOverlay, 2);
-        Grid.SetColumnSpan(WindowPickerOverlay, 2);
+        Grid.SetColumnSpan(WindowPickerOverlay, 3);
 
         // CaptionHeight for thin drag bar
         Chrome.CaptionHeight = 6;

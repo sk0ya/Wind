@@ -316,8 +316,12 @@
                 </StackPanel>
             </Grid>
 
+            <!-- Separator between tab bar and content (visible in Left/Right mode) -->
+            <Border x:Name="TabBarSeparator" Visibility="Collapsed"
+                    Background="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+
             <!-- Content Area -->
-            <Grid x:Name="ContentPanel" Background="{DynamicResource ControlFillColorDefaultBrush}">
+            <Grid x:Name="ContentPanel" Background="{DynamicResource ApplicationBackgroundBrush}">
                 <!-- Empty State -->
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                             Visibility="{Binding SelectedTab, Converter={StaticResource NullToVisibility}, ConverterParameter=invert}"
