@@ -95,6 +95,29 @@ public class TabManager
         return tab;
     }
 
+    public TabItem AddContentTab(string title, string contentKey, bool activate = true)
+    {
+        // Check if already added
+        var existingTab = Tabs.FirstOrDefault(t => t.ContentKey == contentKey);
+        if (existingTab != null)
+        {
+            if (activate)
+                ActiveTab = existingTab;
+            return existingTab;
+        }
+
+        var tab = new TabItem { ContentKey = contentKey };
+        tab.Title = title;
+
+        Tabs.Add(tab);
+        TabAdded?.Invoke(this, tab);
+
+        if (activate)
+            ActiveTab = tab;
+
+        return tab;
+    }
+
     private void OnHostedWindowClosed(TabItem tab)
     {
         // Ensure we're on the UI thread
@@ -141,7 +164,7 @@ public class TabManager
         // Update tile layout if this tab was tiled
         UpdateTileForRemovedTab(tab);
 
-        if (_windowHosts.TryGetValue(tab.Id, out var host))
+        if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
         {
             _windowManager.ReleaseWindow(host);
             _windowHosts.Remove(tab.Id);
@@ -253,8 +276,9 @@ public class TabManager
     public void CleanupInvalidTabs()
     {
         var invalidTabs = Tabs.Where(t =>
-            t.Window?.Handle == IntPtr.Zero ||
-            !_windowManager.IsWindowValid(t.Window!.Handle)).ToList();
+            !t.IsContentTab &&
+            (t.Window?.Handle == IntPtr.Zero ||
+            !_windowManager.IsWindowValid(t.Window!.Handle))).ToList();
 
         foreach (var tab in invalidTabs)
         {
@@ -266,6 +290,8 @@ public class TabManager
     {
         foreach (var tab in Tabs.ToList())
         {
+            if (tab.IsContentTab) continue;
+
             if (_windowHosts.TryGetValue(tab.Id, out var host))
             {
                 if (tab.IsLaunchedAtStartup)
@@ -290,6 +316,8 @@ public class TabManager
     {
         foreach (var tab in Tabs.ToList())
         {
+            if (tab.IsContentTab) continue;
+
             if (tab.Window?.Handle != IntPtr.Zero)
             {
                 NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
@@ -310,6 +338,8 @@ public class TabManager
         // on WindowHost objects before SetParent has detached the hosted windows.
         foreach (var tab in Tabs.ToList())
         {
+            if (tab.IsContentTab) continue;
+
             if (_windowHosts.TryGetValue(tab.Id, out var host))
             {
                 _windowManager.ReleaseWindow(host);

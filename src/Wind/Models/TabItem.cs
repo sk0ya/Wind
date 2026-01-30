@@ -31,6 +31,14 @@ public partial class TabItem : ObservableObject
     [ObservableProperty]
     private bool _isLaunchedAtStartup;
 
+    /// <summary>
+    /// Key identifying the content type for content tabs (e.g. "Settings").
+    /// Null for regular window tabs.
+    /// </summary>
+    public string? ContentKey { get; init; }
+
+    public bool IsContentTab => ContentKey != null;
+
     public TabItem()
     {
     }

@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private Point? _dragStartPoint;
     private bool _isDragging;
     private readonly List<WindowHost> _tiledHosts = new();
+    private Views.SettingsPage? _settingsPage;
 
     public MainWindow()
     {
@@ -275,9 +276,7 @@ public partial class MainWindow : Window
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        var settingsWindow = App.GetService<SettingsWindow>();
-        settingsWindow.Owner = this;
-        settingsWindow.ShowDialog();
+        _viewModel.OpenSettingsCommand.Execute(null);
     }
 
     private void TabItem_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -363,7 +362,46 @@ public partial class MainWindow : Window
         {
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
             {
+                // Skip if returning from content tab — the IsContentTabActive handler
+                // will call UpdateWindowHost after restoring container visibility.
+                if (ContentTabContainer.Visibility == Visibility.Visible)
+                    return;
+
                 UpdateWindowHost(_viewModel.CurrentWindowHost);
+            });
+        }
+        else if (e.PropertyName == nameof(MainViewModel.IsContentTabActive))
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                if (_viewModel.IsContentTabActive)
+                {
+                    // Hide window host and tile, show content tab
+                    WindowHostContainer.Visibility = Visibility.Collapsed;
+                    if (_currentHost != null)
+                    {
+                        WindowHostContent.Content = null;
+                        _currentHost = null;
+                    }
+                    TileContainer.Visibility = Visibility.Collapsed;
+                    ShowContentTab(_viewModel.ActiveContentKey);
+                }
+                else
+                {
+                    ContentTabContainer.Visibility = Visibility.Collapsed;
+                    ContentTabContent.Content = null;
+
+                    // Restore WindowHostContainer and re-embed the window host in one place
+                    // to avoid race conditions with the CurrentWindowHost handler.
+                    WindowHostContainer.Visibility = _viewModel.SelectedTab != null
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+
+                    if (_viewModel.CurrentWindowHost != null)
+                    {
+                        UpdateWindowHost(_viewModel.CurrentWindowHost);
+                    }
+                }
             });
         }
         else if (e.PropertyName == nameof(MainViewModel.IsTileVisible))
@@ -472,6 +510,16 @@ public partial class MainWindow : Window
         if (width > 0 && height > 0)
         {
             _currentHost.ResizeHostedWindow(width, height);
+        }
+    }
+
+    private void ShowContentTab(string? contentKey)
+    {
+        if (contentKey == "Settings")
+        {
+            _settingsPage ??= App.GetService<Views.SettingsPage>();
+            ContentTabContent.Content = _settingsPage;
+            ContentTabContainer.Visibility = Visibility.Visible;
         }
     }
 

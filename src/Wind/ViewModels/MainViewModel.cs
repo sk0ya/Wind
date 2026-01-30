@@ -48,6 +48,18 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isTileVisible;
 
+    /// <summary>
+    /// True when the active tab is a content tab (e.g. Settings).
+    /// </summary>
+    [ObservableProperty]
+    private bool _isContentTabActive;
+
+    /// <summary>
+    /// The content key of the active content tab, or null.
+    /// </summary>
+    [ObservableProperty]
+    private string? _activeContentKey;
+
     public MainViewModel(
         WindowManager windowManager,
         TabManager tabManager,
@@ -70,17 +82,29 @@ public partial class MainViewModel : ObservableObject
     {
         SelectedTab = tab;
 
-        if (IsTiled && tab != null && tab.IsTiled)
+        if (tab != null && tab.IsContentTab)
+        {
+            // Content tab (e.g. Settings)
+            IsTileVisible = false;
+            CurrentWindowHost = null;
+            IsContentTabActive = true;
+            ActiveContentKey = tab.ContentKey;
+        }
+        else if (IsTiled && tab != null && tab.IsTiled)
         {
             // Clicked a tiled tab — show tile view
             IsTileVisible = true;
             CurrentWindowHost = null;
+            IsContentTabActive = false;
+            ActiveContentKey = null;
         }
         else
         {
             // Clicked a non-tiled tab or no tile layout — show single view
             IsTileVisible = false;
             CurrentWindowHost = tab != null ? _tabManager.GetWindowHost(tab) : null;
+            IsContentTabActive = false;
+            ActiveContentKey = null;
         }
     }
 
@@ -121,6 +145,12 @@ public partial class MainViewModel : ObservableObject
                 _tabManager.SelectTab(index);
                 break;
         }
+    }
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        _tabManager.AddContentTab("Settings", "Settings");
     }
 
     [RelayCommand]

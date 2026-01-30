@@ -257,6 +257,13 @@
                 <!-- Tile Container -->
                 <Grid x:Name="TileContainer" ClipToBounds="True"
                       Visibility="Collapsed"/>
+
+                <!-- Content Tab Container (Settings etc.) -->
+                <Border x:Name="ContentTabContainer" Visibility="Collapsed">
+                    <ContentControl x:Name="ContentTabContent"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"/>
+                </Border>
             </Grid>
 
             <!-- Window Picker Overlay -->

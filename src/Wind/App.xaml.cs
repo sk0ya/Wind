@@ -2,8 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using Wind.Services;
 using Wind.ViewModels;
-using Wind.Views;
-
 namespace Wind;
 
 public partial class App : Application
@@ -28,11 +26,11 @@ public partial class App : Application
         // ViewModels
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<WindowPickerViewModel>();
-        services.AddTransient<SettingsViewModel>();
+        services.AddSingleton<SettingsViewModel>();
 
-        // Windows
+        // Views
         services.AddSingleton<MainWindow>();
-        services.AddTransient<SettingsWindow>();
+        services.AddSingleton<Views.SettingsPage>();
     }
 
     protected override async void OnStartup(StartupEventArgs e)
