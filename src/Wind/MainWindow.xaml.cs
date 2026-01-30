@@ -327,14 +327,14 @@ public partial class MainWindow : Window
         Grid.SetRow(TabBarSeparator, 0);
         Grid.SetColumn(TabBarSeparator, 1);
 
-        // TabBarArea internal: 2 rows [ScrollViewer | ButtonsPanel]
-        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        // TabBarArea internal: 2 rows [ButtonsPanel | ScrollViewer]
         TabBarArea.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        Grid.SetRow(TabScrollViewer, 0);
-        Grid.SetColumn(TabScrollViewer, 0);
-        Grid.SetRow(WindowControlsPanel, 1);
+        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(WindowControlsPanel, 0);
         Grid.SetColumn(WindowControlsPanel, 0);
         WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
+        Grid.SetRow(TabScrollViewer, 1);
+        Grid.SetColumn(TabScrollViewer, 0);
 
         // ContentPanel: Row 0, Column 2
         Grid.SetRow(ContentPanel, 0);
@@ -374,14 +374,14 @@ public partial class MainWindow : Window
         TabBarArea.MinWidth = 180;
         TabBarArea.MaxWidth = 300;
 
-        // TabBarArea internal: 2 rows [ScrollViewer | ButtonsPanel]
-        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        // TabBarArea internal: 2 rows [ButtonsPanel | ScrollViewer]
         TabBarArea.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        Grid.SetRow(TabScrollViewer, 0);
-        Grid.SetColumn(TabScrollViewer, 0);
-        Grid.SetRow(WindowControlsPanel, 1);
+        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(WindowControlsPanel, 0);
         Grid.SetColumn(WindowControlsPanel, 0);
         WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
+        Grid.SetRow(TabScrollViewer, 1);
+        Grid.SetColumn(TabScrollViewer, 0);
 
         // Overlay spans everything
         Grid.SetRowSpan(WindowPickerOverlay, 1);
