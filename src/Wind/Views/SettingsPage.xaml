@@ -133,9 +133,38 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <ui:TextBox Text="{Binding NewQuickLaunchPath, UpdateSourceTrigger=PropertyChanged}"
-                                   PlaceholderText="e.g. code, wt, or C:\path\to\app.exe"
-                                   KeyDown="QuickLaunchPath_KeyDown"/>
+                        <Grid>
+                            <ui:TextBox x:Name="QuickLaunchPathBox"
+                                       Text="{Binding NewQuickLaunchPath, UpdateSourceTrigger=PropertyChanged}"
+                                       PlaceholderText="e.g. code, wt, or C:\path\to\app.exe"
+                                       PreviewKeyDown="QuickLaunchPath_PreviewKeyDown"/>
+                            <Popup IsOpen="{Binding IsSuggestionsOpen}"
+                                   PlacementTarget="{Binding ElementName=QuickLaunchPathBox}"
+                                   Placement="Bottom"
+                                   StaysOpen="False"
+                                   Width="{Binding ActualWidth, ElementName=QuickLaunchPathBox}"
+                                   AllowsTransparency="True">
+                                <Border Background="{DynamicResource ApplicationBackgroundBrush}"
+                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="4"
+                                        Padding="0" MaxHeight="200">
+                                    <ListBox x:Name="SuggestionsList"
+                                             ItemsSource="{Binding PathSuggestions}"
+                                             SelectedItem="{Binding SelectedSuggestion}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             PreviewMouseLeftButtonUp="Suggestions_PreviewMouseLeftButtonUp">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" Padding="8,4"
+                                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+                            </Popup>
+                        </Grid>
                         <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon FolderOpen24}"
                                   Command="{Binding BrowseQuickLaunchAppCommand}"
                                   ToolTip="Browse..." Margin="4,0,0,0"/>

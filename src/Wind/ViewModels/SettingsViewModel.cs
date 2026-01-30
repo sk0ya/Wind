@@ -63,6 +63,17 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _newQuickLaunchPath = string.Empty;
 
+    [ObservableProperty]
+    private ObservableCollection<string> _pathSuggestions = new();
+
+    [ObservableProperty]
+    private bool _isSuggestionsOpen;
+
+    [ObservableProperty]
+    private string? _selectedSuggestion;
+
+    private List<string> _allPathExecutables = new();
+
     // Tile Sets
     [ObservableProperty]
     private ObservableCollection<TileSetItem> _tileSets = new();
@@ -74,6 +85,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         _settingsManager = settingsManager;
         LoadSettings();
+        ScanPathExecutables();
     }
 
     private void LoadSettings()
@@ -114,6 +126,131 @@ public partial class SettingsViewModel : ObservableObject
                 tileSet.Apps.Add(app);
             }
             TileSets.Add(tileSet);
+        }
+    }
+
+    private void ScanPathExecutables()
+    {
+        var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { ".exe", ".cmd", ".bat", ".com" };
+
+        var pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
+        var dirs = pathVar.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var dir in dirs)
+        {
+            try
+            {
+                if (!Directory.Exists(dir)) continue;
+                foreach (var file in Directory.EnumerateFiles(dir))
+                {
+                    var ext = Path.GetExtension(file);
+                    if (extensions.Contains(ext))
+                    {
+                        names.Add(Path.GetFileNameWithoutExtension(file));
+                    }
+                }
+            }
+            catch
+            {
+                // skip inaccessible directories
+            }
+        }
+
+        _allPathExecutables = names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private bool _suppressSuggestions;
+
+    partial void OnNewQuickLaunchPathChanged(string value)
+    {
+        if (_suppressSuggestions) return;
+
+        if (string.IsNullOrEmpty(value))
+        {
+            IsSuggestionsOpen = false;
+            return;
+        }
+
+        List<string> matches;
+
+        if (value.Contains('\\') || value.Contains('/'))
+        {
+            matches = GetFilePathSuggestions(value);
+        }
+        else
+        {
+            var query = value.Trim();
+            matches = _allPathExecutables
+                .Where(n => n.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Take(10)
+                .ToList();
+        }
+
+        PathSuggestions.Clear();
+        foreach (var m in matches)
+        {
+            PathSuggestions.Add(m);
+        }
+
+        IsSuggestionsOpen = PathSuggestions.Count > 0;
+    }
+
+    private static List<string> GetFilePathSuggestions(string input)
+    {
+        try
+        {
+            var lastSep = input.LastIndexOfAny(['\\', '/']);
+            var dir = input[..(lastSep + 1)];
+            var prefix = input[(lastSep + 1)..];
+
+            if (!Directory.Exists(dir)) return [];
+
+            var results = new List<string>();
+
+            // Directories first
+            foreach (var d in Directory.EnumerateDirectories(dir))
+            {
+                var name = Path.GetFileName(d);
+                if (name.Contains(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    results.Add(d + "\\");
+                }
+                if (results.Count >= 15) break;
+            }
+
+            // Then files
+            foreach (var f in Directory.EnumerateFiles(dir))
+            {
+                var name = Path.GetFileName(f);
+                if (name.Contains(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    results.Add(f);
+                }
+                if (results.Count >= 15) break;
+            }
+
+            return results;
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public void ApplySuggestion(string value)
+    {
+        _suppressSuggestions = true;
+        NewQuickLaunchPath = value;
+        IsSuggestionsOpen = false;
+        SelectedSuggestion = null;
+        _suppressSuggestions = false;
+
+        // If it's a directory, immediately re-trigger to show contents
+        if (value.EndsWith('\\'))
+        {
+            OnNewQuickLaunchPathChanged(value);
         }
     }
 
