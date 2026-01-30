@@ -17,6 +17,8 @@ public class SettingsManager
 
     public AppSettings Settings => _settings;
 
+    public event Action<string>? TabHeaderPositionChanged;
+
     public SettingsManager()
     {
         var appDataPath = Path.Combine(
@@ -198,6 +200,13 @@ public class SettingsManager
     public void SaveQuickLaunchApp()
     {
         SaveSettings();
+    }
+
+    public void SetTabHeaderPosition(string position)
+    {
+        _settings.TabHeaderPosition = position;
+        SaveSettings();
+        TabHeaderPositionChanged?.Invoke(position);
     }
 
     public List<(Process Process, StartupApplication Config)> LaunchStartupApplications()

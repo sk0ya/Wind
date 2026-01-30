@@ -50,6 +50,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _selectedTheme = "Dark";
 
+    [ObservableProperty]
+    private string _tabHeaderPosition = "Top";
+
     // Quick Launch
     [ObservableProperty]
     private ObservableCollection<QuickLaunchApp> _quickLaunchApps = new();
@@ -95,6 +98,7 @@ public partial class SettingsViewModel : ObservableObject
         RunAtWindowsStartup = _settingsManager.IsRunAtWindowsStartup();
         CloseWindowsOnExit = settings.CloseWindowsOnExit;
         SelectedTheme = settings.Theme;
+        TabHeaderPosition = settings.TabHeaderPosition;
         StartupApplications.Clear();
         foreach (var app in settings.StartupApplications)
         {
@@ -312,6 +316,11 @@ public partial class SettingsViewModel : ObservableObject
         _settingsManager.Settings.Theme = value;
         _settingsManager.SaveSettings();
         ApplyTheme(value);
+    }
+
+    partial void OnTabHeaderPositionChanged(string value)
+    {
+        _settingsManager.SetTabHeaderPosition(value);
     }
 
     [RelayCommand]

@@ -19,11 +19,13 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly HotkeyManager _hotkeyManager;
     private readonly TabManager _tabManager;
+    private readonly SettingsManager _settingsManager;
     private WindowHost? _currentHost;
     private Point? _dragStartPoint;
     private bool _isDragging;
     private readonly List<WindowHost> _tiledHosts = new();
     private Views.SettingsPage? _settingsPage;
+    private string _currentTabPosition = "Top";
 
     public MainWindow()
     {
@@ -32,6 +34,7 @@ public partial class MainWindow : Window
         _viewModel = App.GetService<MainViewModel>();
         _hotkeyManager = App.GetService<HotkeyManager>();
         _tabManager = App.GetService<TabManager>();
+        _settingsManager = App.GetService<SettingsManager>();
 
         DataContext = _viewModel;
         WindowPickerControl.DataContext = App.GetService<WindowPickerViewModel>();
@@ -78,6 +81,303 @@ public partial class MainWindow : Window
                 }
             });
         };
+
+        // Subscribe to tab position changes
+        _settingsManager.TabHeaderPositionChanged += OnTabHeaderPositionChanged;
+
+        // Apply initial tab position
+        ApplyTabHeaderPosition(_settingsManager.Settings.TabHeaderPosition);
+    }
+
+    private void OnTabHeaderPositionChanged(string position)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+        {
+            ApplyTabHeaderPosition(position);
+            UpdateWindowHostSize();
+        });
+    }
+
+    private void ResetLayoutProperties()
+    {
+        // Clear all grid definitions
+        RootGrid.RowDefinitions.Clear();
+        RootGrid.ColumnDefinitions.Clear();
+        TabBarArea.RowDefinitions.Clear();
+        TabBarArea.ColumnDefinitions.Clear();
+
+        // Reset Grid attached properties for all major elements to defaults
+        UIElement[] elements = [DragBar, TabBarArea, ContentPanel, WindowPickerOverlay, TabScrollViewer, WindowControlsPanel];
+        foreach (var el in elements)
+        {
+            Grid.SetRow(el, 0);
+            Grid.SetColumn(el, 0);
+            Grid.SetRowSpan(el, 1);
+            Grid.SetColumnSpan(el, 1);
+        }
+
+        // Reset TabBarArea sizing (set by Left/Right layouts)
+        TabBarArea.ClearValue(MinWidthProperty);
+        TabBarArea.ClearValue(MaxWidthProperty);
+        TabBarArea.ClearValue(MinHeightProperty);
+        TabBarArea.ClearValue(MaxHeightProperty);
+        TabBarArea.ClearValue(WidthProperty);
+        TabBarArea.ClearValue(HeightProperty);
+
+        // Reset WindowControlsPanel alignment
+        WindowControlsPanel.ClearValue(HorizontalAlignmentProperty);
+        WindowControlsPanel.ClearValue(VerticalAlignmentProperty);
+
+        // Reset DragBar
+        DragBar.Visibility = Visibility.Collapsed;
+    }
+
+    private void ApplyTabHeaderPosition(string position)
+    {
+        _currentTabPosition = position;
+        bool isVertical = position is "Left" or "Right";
+
+        // Full reset of all layout properties from previous layout
+        ResetLayoutProperties();
+
+        // Configure tab items and scroll for orientation
+        // Reset AddWindowButton local values
+        AddWindowButton.ClearValue(WidthProperty);
+        AddWindowButton.ClearValue(HeightProperty);
+        AddWindowButton.ClearValue(HorizontalAlignmentProperty);
+
+        if (isVertical)
+        {
+            TabItemsControl.ItemsPanel = (ItemsPanelTemplate)FindResource("VerticalTabPanel");
+            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("VerticalTabItemTemplate");
+            TabsPanel.Orientation = Orientation.Vertical;
+            TabScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            TabScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            WindowControlsPanel.Orientation = Orientation.Horizontal;
+            AddWindowButton.Width = double.NaN;
+            AddWindowButton.Height = 36;
+            AddWindowButton.HorizontalAlignment = HorizontalAlignment.Stretch;
+        }
+        else
+        {
+            TabItemsControl.ItemsPanel = (ItemsPanelTemplate)FindResource("HorizontalTabPanel");
+            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("HorizontalTabItemTemplate");
+            TabsPanel.Orientation = Orientation.Horizontal;
+            TabScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            TabScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            WindowControlsPanel.Orientation = Orientation.Horizontal;
+            AddWindowButton.Width = 36;
+            AddWindowButton.Height = 36;
+        }
+
+        // Set button sizes for vertical/horizontal mode
+        SetButtonSizesForMode(isVertical);
+
+        switch (position)
+        {
+            case "Top":
+                ApplyTopLayout();
+                break;
+            case "Bottom":
+                ApplyBottomLayout();
+                break;
+            case "Left":
+                ApplyLeftLayout();
+                break;
+            case "Right":
+                ApplyRightLayout();
+                break;
+            default:
+                ApplyTopLayout();
+                break;
+        }
+    }
+
+    private void SetButtonSizesForMode(bool isVertical)
+    {
+        // The TitleBarButtonStyle sets Width=46, Height=36.
+        // For vertical mode, we clear the local Width so buttons share the row evenly.
+        // For horizontal mode, we clear local values to let the Style apply.
+        Button[] buttons = [SettingsButton, MinimizeButton, MaximizeButton, CloseButton];
+
+        foreach (var btn in buttons)
+        {
+            if (isVertical)
+            {
+                btn.ClearValue(WidthProperty);
+                btn.Height = 36;
+                btn.HorizontalAlignment = HorizontalAlignment.Stretch;
+            }
+            else
+            {
+                btn.ClearValue(WidthProperty);
+                btn.ClearValue(HeightProperty);
+                btn.ClearValue(HorizontalAlignmentProperty);
+            }
+        }
+    }
+
+    private void ApplyTopLayout()
+    {
+        // Grid: 2 rows (36px, *)
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        // DragBar hidden
+        DragBar.Visibility = Visibility.Collapsed;
+        Grid.SetRow(DragBar, 0);
+        Grid.SetColumn(DragBar, 0);
+        Grid.SetColumnSpan(DragBar, 1);
+
+        // TabBarArea: Row 0
+        Grid.SetRow(TabBarArea, 0);
+        Grid.SetColumn(TabBarArea, 0);
+        Grid.SetColumnSpan(TabBarArea, 1);
+
+        // TabBarArea internal: 2 columns [ScrollViewer | Controls]
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetRow(TabScrollViewer, 0);
+        Grid.SetColumn(TabScrollViewer, 0);
+        Grid.SetRow(WindowControlsPanel, 0);
+        Grid.SetColumn(WindowControlsPanel, 1);
+
+        // ContentPanel: Row 1
+        Grid.SetRow(ContentPanel, 1);
+        Grid.SetColumn(ContentPanel, 0);
+        Grid.SetColumnSpan(ContentPanel, 1);
+
+        // Overlay spans all rows
+        Grid.SetRowSpan(WindowPickerOverlay, 2);
+        Grid.SetColumnSpan(WindowPickerOverlay, 1);
+
+        // CaptionHeight
+        Chrome.CaptionHeight = 36;
+    }
+
+    private void ApplyBottomLayout()
+    {
+        // Grid: 3 rows (6px drag, *, 36px tabs)
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
+
+        // DragBar: Row 0
+        DragBar.Visibility = Visibility.Visible;
+        Grid.SetRow(DragBar, 0);
+        Grid.SetColumn(DragBar, 0);
+        Grid.SetColumnSpan(DragBar, 1);
+
+        // ContentPanel: Row 1
+        Grid.SetRow(ContentPanel, 1);
+        Grid.SetColumn(ContentPanel, 0);
+        Grid.SetColumnSpan(ContentPanel, 1);
+
+        // TabBarArea: Row 2
+        Grid.SetRow(TabBarArea, 2);
+        Grid.SetColumn(TabBarArea, 0);
+        Grid.SetColumnSpan(TabBarArea, 1);
+
+        // TabBarArea internal: 2 columns [ScrollViewer | Controls]
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetRow(TabScrollViewer, 0);
+        Grid.SetColumn(TabScrollViewer, 0);
+        Grid.SetRow(WindowControlsPanel, 0);
+        Grid.SetColumn(WindowControlsPanel, 1);
+
+        // Overlay spans all rows
+        Grid.SetRowSpan(WindowPickerOverlay, 3);
+        Grid.SetColumnSpan(WindowPickerOverlay, 1);
+
+        // CaptionHeight for thin drag bar
+        Chrome.CaptionHeight = 6;
+    }
+
+    private void ApplyLeftLayout()
+    {
+        // Grid: 2 rows (6px drag, *), 2 columns (Auto tabbar, * content)
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // DragBar: Row 0, spans both columns
+        DragBar.Visibility = Visibility.Visible;
+        Grid.SetRow(DragBar, 0);
+        Grid.SetColumn(DragBar, 0);
+        Grid.SetColumnSpan(DragBar, 2);
+
+        // TabBarArea: Row 1, Column 0 (vertical)
+        Grid.SetRow(TabBarArea, 1);
+        Grid.SetColumn(TabBarArea, 0);
+        Grid.SetColumnSpan(TabBarArea, 1);
+        TabBarArea.MinWidth = 180;
+        TabBarArea.MaxWidth = 300;
+
+        // TabBarArea internal: 2 rows [ScrollViewer | ButtonsPanel]
+        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRow(TabScrollViewer, 0);
+        Grid.SetColumn(TabScrollViewer, 0);
+        Grid.SetRow(WindowControlsPanel, 1);
+        Grid.SetColumn(WindowControlsPanel, 0);
+        WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+        // ContentPanel: Row 1, Column 1
+        Grid.SetRow(ContentPanel, 1);
+        Grid.SetColumn(ContentPanel, 1);
+        Grid.SetColumnSpan(ContentPanel, 1);
+
+        // Overlay spans everything
+        Grid.SetRowSpan(WindowPickerOverlay, 2);
+        Grid.SetColumnSpan(WindowPickerOverlay, 2);
+
+        // CaptionHeight for thin drag bar
+        Chrome.CaptionHeight = 6;
+    }
+
+    private void ApplyRightLayout()
+    {
+        // Grid: 2 rows (6px drag, *), 2 columns (* content, Auto tabbar)
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        // DragBar: Row 0, spans both columns
+        DragBar.Visibility = Visibility.Visible;
+        Grid.SetRow(DragBar, 0);
+        Grid.SetColumn(DragBar, 0);
+        Grid.SetColumnSpan(DragBar, 2);
+
+        // ContentPanel: Row 1, Column 0
+        Grid.SetRow(ContentPanel, 1);
+        Grid.SetColumn(ContentPanel, 0);
+        Grid.SetColumnSpan(ContentPanel, 1);
+
+        // TabBarArea: Row 1, Column 1 (vertical)
+        Grid.SetRow(TabBarArea, 1);
+        Grid.SetColumn(TabBarArea, 1);
+        Grid.SetColumnSpan(TabBarArea, 1);
+        TabBarArea.MinWidth = 180;
+        TabBarArea.MaxWidth = 300;
+
+        // TabBarArea internal: 2 rows [ScrollViewer | ButtonsPanel]
+        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRow(TabScrollViewer, 0);
+        Grid.SetColumn(TabScrollViewer, 0);
+        Grid.SetRow(WindowControlsPanel, 1);
+        Grid.SetColumn(WindowControlsPanel, 0);
+        WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+        // Overlay spans everything
+        Grid.SetRowSpan(WindowPickerOverlay, 2);
+        Grid.SetColumnSpan(WindowPickerOverlay, 2);
+
+        // CaptionHeight for thin drag bar
+        Chrome.CaptionHeight = 6;
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -93,16 +393,16 @@ public partial class MainWindow : Window
     private void MainWindow_Activated(object? sender, EventArgs e)
     {
         // When Wind window is activated, forward focus to the embedded window
-        // only if the mouse is over the content area (not the title bar).
+        // only if the mouse is over the content area (not the tab bar).
         Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
             if (_currentHost == null) return;
 
             var pos = Mouse.GetPosition(this);
-            // Row 0 is the title bar (36px). Only forward focus when the
-            // mouse is below it so that clicks on tabs / +button / window
-            // controls are not stolen by the hosted (Chromium) window.
-            if (pos.Y > 36)
+            var contentPos = ContentPanel.TranslatePoint(new Point(0, 0), this);
+            var contentRect = new Rect(contentPos, new Size(ContentPanel.ActualWidth, ContentPanel.ActualHeight));
+
+            if (contentRect.Contains(pos))
             {
                 _currentHost.FocusHostedWindow();
             }
@@ -150,6 +450,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        _settingsManager.TabHeaderPositionChanged -= OnTabHeaderPositionChanged;
         _viewModel.Cleanup();
     }
 

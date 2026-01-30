@@ -13,6 +13,7 @@ public class AppSettings
     /// </summary>
     public string CloseWindowsOnExit { get; set; } = "None";
     public List<QuickLaunchApp> QuickLaunchApps { get; set; } = new();
+    public string TabHeaderPosition { get; set; } = "Top";
 }
 
 public class StartupApplication

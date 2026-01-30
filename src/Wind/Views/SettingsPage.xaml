@@ -347,6 +347,26 @@
                 </StackPanel>
             </Border>
 
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                <StackPanel>
+                    <TextBlock Text="Tab Position" FontWeight="SemiBold" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <RadioButton Content="Top" GroupName="TabPosition" Margin="0,4"
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                 IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Top}"/>
+                    <RadioButton Content="Bottom" GroupName="TabPosition" Margin="0,4"
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                 IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Bottom}"/>
+                    <RadioButton Content="Left" GroupName="TabPosition" Margin="0,4"
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                 IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Left}"/>
+                    <RadioButton Content="Right" GroupName="TabPosition" Margin="0,4"
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                 IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Right}"/>
+                </StackPanel>
+            </Border>
+
             <!-- Hotkeys Section -->
             <TextBlock Text="Hotkeys" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>

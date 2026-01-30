@@ -17,7 +17,8 @@
         StateChanged="Window_StateChanged">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="36"
+        <WindowChrome x:Name="Chrome"
+                      CaptionHeight="36"
                       ResizeBorderThickness="4"
                       GlassFrameThickness="0"
                       CornerRadius="0"
@@ -68,7 +69,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Tab Item Style -->
+        <!-- Tab Item Style (horizontal mode - bottom accent) -->
         <Style x:Key="TabItemStyle" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -93,96 +94,181 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Tab Item Style (vertical mode - left accent) -->
+        <Style x:Key="TabItemVerticalStyle" TargetType="Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsMultiSelected}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                    <Setter Property="Opacity" Value="0.7"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsTiled}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Panel templates for tab items -->
+        <ItemsPanelTemplate x:Key="HorizontalTabPanel">
+            <StackPanel Orientation="Horizontal"/>
+        </ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="VerticalTabPanel">
+            <StackPanel Orientation="Vertical"/>
+        </ItemsPanelTemplate>
+
+        <!-- Data templates for tab items -->
+        <DataTemplate x:Key="HorizontalTabItemTemplate">
+            <Border Style="{StaticResource TabItemStyle}"
+                    Height="36"
+                    MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
+                    MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                    WindowChrome.IsHitTestVisibleInChrome="True"
+                    Tag="{Binding}">
+                <Border.ContextMenu>
+                    <ContextMenu Tag="{Binding}">
+                        <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
+                        <MenuItem Header="タイル解除" Click="StopTile_Click"
+                                  Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
+                        <Separator/>
+                        <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="{Binding Icon}" Width="16" Height="16"
+                           Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Title}" MaxWidth="120"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Button Background="Transparent" BorderThickness="0"
+                            Padding="4" Margin="6,0,0,0"
+                            Click="CloseTab_Click" Tag="{Binding}"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            Width="20" Height="20" Cursor="Hand"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="3">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="9"/>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="VerticalTabItemTemplate">
+            <Border Style="{StaticResource TabItemVerticalStyle}"
+                    MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
+                    MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                    WindowChrome.IsHitTestVisibleInChrome="True"
+                    Tag="{Binding}">
+                <Border.ContextMenu>
+                    <ContextMenu Tag="{Binding}">
+                        <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
+                        <MenuItem Header="タイル解除" Click="StopTile_Click"
+                                  Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
+                        <Separator/>
+                        <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Image Source="{Binding Icon}" Width="16" Height="16"
+                           Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" MaxWidth="140"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Button Grid.Column="2" Background="Transparent" BorderThickness="0"
+                            Padding="4" Margin="6,0,0,0"
+                            Click="CloseTab_Click" Tag="{Binding}"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            Width="20" Height="20" Cursor="Hand"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="3">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="9"/>
+                    </Button>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <Border x:Name="MainBorder" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="36"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+        <Grid x:Name="RootGrid">
+            <!-- Row/Column definitions set by code-behind via ApplyTabHeaderPosition -->
 
-            <!-- Title Bar with Tabs -->
-            <Grid Grid.Row="0" Background="{DynamicResource ApplicationBackgroundBrush}"
+            <!-- Drag Bar: visible when tabs are not at top, provides window drag area -->
+            <Border x:Name="DragBar" Height="6" Visibility="Collapsed"
+                    Background="{DynamicResource ApplicationBackgroundBrush}"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
+
+            <!-- Tab Bar Area: contains tabs, add button, and (for left/right) window controls -->
+            <Grid x:Name="TabBarArea" Background="{DynamicResource ApplicationBackgroundBrush}"
                   MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                <!-- Internal row/column definitions set by code-behind -->
 
-                <!-- Tabs Area -->
-                <ScrollViewer Grid.Column="0"
+                <ScrollViewer x:Name="TabScrollViewer"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled"
                               WindowChrome.IsHitTestVisibleInChrome="True"
                               PreviewMouseLeftButtonDown="TabArea_PreviewMouseLeftButtonDown">
-                    <StackPanel Orientation="Horizontal">
-                        <!-- Tabs -->
-                        <ItemsControl ItemsSource="{Binding Tabs}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Style="{StaticResource TabItemStyle}"
-                                            Height="36"
-                                            MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
-                                            MouseRightButtonUp="TabItem_MouseRightButtonUp"
-                                            WindowChrome.IsHitTestVisibleInChrome="True"
-                                            Tag="{Binding}">
-                                        <Border.ContextMenu>
-                                            <ContextMenu Tag="{Binding}">
-                                                <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
-                                                <MenuItem Header="タイル解除" Click="StopTile_Click"
-                                                          Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
-                                                <Separator/>
-                                                <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
-                                            </ContextMenu>
-                                        </Border.ContextMenu>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Image Source="{Binding Icon}" Width="16" Height="16"
-                                                   Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Title}" MaxWidth="120"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       VerticalAlignment="Center"
-                                                       FontSize="12"
-                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                            <Button Background="Transparent" BorderThickness="0"
-                                                    Padding="4" Margin="6,0,0,0"
-                                                    Click="CloseTab_Click" Tag="{Binding}"
-                                                    WindowChrome.IsHitTestVisibleInChrome="True"
-                                                    Width="20" Height="20" Cursor="Hand"
-                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-                                                <Button.Style>
-                                                    <Style TargetType="Button">
-                                                        <Setter Property="Template">
-                                                            <Setter.Value>
-                                                                <ControlTemplate TargetType="Button">
-                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="3">
-                                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                    </Border>
-                                                                </ControlTemplate>
-                                                            </Setter.Value>
-                                                        </Setter>
-                                                        <Style.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}"/>
-                                                            </Trigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                                <ui:SymbolIcon Symbol="Dismiss16" FontSize="9"/>
-                                            </Button>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                    <StackPanel x:Name="TabsPanel" Orientation="Horizontal">
+                        <ItemsControl x:Name="TabItemsControl" ItemsSource="{Binding Tabs}"
+                                      ItemsPanel="{StaticResource HorizontalTabPanel}"
+                                      ItemTemplate="{StaticResource HorizontalTabItemTemplate}"/>
 
                         <!-- Add Window Button -->
-                        <Button Content="+"
+                        <Button x:Name="AddWindowButton" Content="+"
                                 Click="AddWindowButton_Click"
                                 WindowChrome.IsHitTestVisibleInChrome="True"
                                 Width="36" Height="36"
@@ -214,24 +300,24 @@
                 </ScrollViewer>
 
                 <!-- Window Control Buttons -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Style="{StaticResource TitleBarButtonStyle}" Click="SettingsButton_Click" ToolTip="Settings">
+                <StackPanel x:Name="WindowControlsPanel" Orientation="Horizontal">
+                    <Button x:Name="SettingsButton" Style="{StaticResource TitleBarButtonStyle}" Click="SettingsButton_Click" ToolTip="Settings">
                         <ui:SymbolIcon Symbol="Settings24" FontSize="12"/>
                     </Button>
-                    <Button Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click">
+                    <Button x:Name="MinimizeButton" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click">
                         <ui:SymbolIcon Symbol="Subtract24" FontSize="10"/>
                     </Button>
                     <Button x:Name="MaximizeButton" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click">
                         <ui:SymbolIcon x:Name="MaximizeIcon" Symbol="Maximize24" FontSize="10"/>
                     </Button>
-                    <Button Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click">
+                    <Button x:Name="CloseButton" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click">
                         <ui:SymbolIcon Symbol="Dismiss24" FontSize="10"/>
                     </Button>
                 </StackPanel>
             </Grid>
 
             <!-- Content Area -->
-            <Grid Grid.Row="1" Background="{DynamicResource ControlFillColorDefaultBrush}">
+            <Grid x:Name="ContentPanel" Background="{DynamicResource ControlFillColorDefaultBrush}">
                 <!-- Empty State -->
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                             Visibility="{Binding SelectedTab, Converter={StaticResource NullToVisibility}, ConverterParameter=invert}"
@@ -267,7 +353,7 @@
             </Grid>
 
             <!-- Window Picker Overlay -->
-            <Grid Grid.RowSpan="2" Background="#80000000"
+            <Grid x:Name="WindowPickerOverlay" Background="#80000000"
                   Panel.ZIndex="100"
                   Visibility="{Binding IsWindowPickerOpen, Converter={StaticResource BoolToVisibility}}">
                 <views:WindowPicker x:Name="WindowPickerControl"
