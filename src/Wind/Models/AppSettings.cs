@@ -12,6 +12,7 @@ public class AppSettings
     /// "StartupOnly" = close only windows launched at startup
     /// </summary>
     public string CloseWindowsOnExit { get; set; } = "None";
+    public List<QuickLaunchApp> QuickLaunchApps { get; set; } = new();
 }
 
 public class StartupApplication
@@ -28,4 +29,11 @@ public class StartupGroup
 {
     public string Name { get; set; } = string.Empty;
     public string Color { get; set; } = "#6495ED";
+}
+
+public class QuickLaunchApp
+{
+    public string Path { get; set; } = string.Empty;
+    public string Arguments { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 }

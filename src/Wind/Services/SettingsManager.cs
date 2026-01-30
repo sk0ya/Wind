@@ -168,6 +168,38 @@ public class SettingsManager
         }
     }
 
+    public QuickLaunchApp AddQuickLaunchApp(string path, string arguments = "", string? name = null)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null!;
+
+        var appName = name ?? Path.GetFileNameWithoutExtension(path);
+
+        var app = new QuickLaunchApp
+        {
+            Path = path,
+            Arguments = arguments,
+            Name = appName
+        };
+
+        _settings.QuickLaunchApps.Add(app);
+        SaveSettings();
+
+        return app;
+    }
+
+    public void RemoveQuickLaunchApp(QuickLaunchApp app)
+    {
+        if (_settings.QuickLaunchApps.Remove(app))
+        {
+            SaveSettings();
+        }
+    }
+
+    public void SaveQuickLaunchApp()
+    {
+        SaveSettings();
+    }
+
     public List<(Process Process, StartupApplication Config)> LaunchStartupApplications()
     {
         var results = new List<(Process, StartupApplication)>();

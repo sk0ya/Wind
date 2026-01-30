@@ -2,6 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Windows.Data;
 using System.Windows.Threading;
 using Wind.Models;
@@ -12,6 +14,7 @@ namespace Wind.ViewModels;
 public partial class WindowPickerViewModel : ObservableObject
 {
     private readonly WindowManager _windowManager;
+    private readonly SettingsManager _settingsManager;
     private readonly ICollectionView _windowsView;
     private readonly ObservableCollection<WindowInfo> _availableWindows;
     private readonly DispatcherTimer _refreshTimer;
@@ -26,12 +29,19 @@ public partial class WindowPickerViewModel : ObservableObject
     [ObservableProperty]
     private string _searchText = string.Empty;
 
+    [ObservableProperty]
+    private ObservableCollection<QuickLaunchApp> _quickLaunchApps = new();
+
+    [ObservableProperty]
+    private bool _hasQuickLaunchApps;
+
     public event EventHandler<WindowInfo>? WindowSelected;
     public event EventHandler? Cancelled;
 
-    public WindowPickerViewModel(WindowManager windowManager)
+    public WindowPickerViewModel(WindowManager windowManager, SettingsManager settingsManager)
     {
         _windowManager = windowManager;
+        _settingsManager = settingsManager;
         _availableWindows = new ObservableCollection<WindowInfo>();
         _windowsView = CollectionViewSource.GetDefaultView(_availableWindows);
         _windowsView.Filter = FilterWindows;
@@ -48,7 +58,18 @@ public partial class WindowPickerViewModel : ObservableObject
         SearchText = string.Empty;
         SelectedWindow = null;
         RefreshWindowList();
+        LoadQuickLaunchApps();
         _refreshTimer.Start();
+    }
+
+    private void LoadQuickLaunchApps()
+    {
+        QuickLaunchApps.Clear();
+        foreach (var app in _settingsManager.Settings.QuickLaunchApps)
+        {
+            QuickLaunchApps.Add(app);
+        }
+        HasQuickLaunchApps = QuickLaunchApps.Count > 0;
     }
 
     public void Stop()
@@ -121,6 +142,73 @@ public partial class WindowPickerViewModel : ObservableObject
         if (window != null)
         {
             WindowSelected?.Invoke(this, window);
+        }
+    }
+
+    [RelayCommand]
+    private async Task LaunchQuickApp(QuickLaunchApp? app)
+    {
+        if (app == null) return;
+
+        try
+        {
+            // Snapshot existing window handles before launch
+            var existingHandles = new HashSet<IntPtr>(
+                _windowManager.EnumerateWindows().Select(w => w.Handle));
+
+            var isFullPath = Path.IsPathFullyQualified(app.Path);
+            ProcessStartInfo startInfo;
+
+            if (isFullPath)
+            {
+                startInfo = new ProcessStartInfo
+                {
+                    FileName = app.Path,
+                    Arguments = app.Arguments,
+                    UseShellExecute = true
+                };
+            }
+            else
+            {
+                // PATH-based command (e.g. "code", "wt") — run via cmd /c to resolve PATH
+                // without showing a console window
+                var args = string.IsNullOrEmpty(app.Arguments)
+                    ? $"/c \"{app.Path}\""
+                    : $"/c \"{app.Path}\" {app.Arguments}";
+                startInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = args,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
+
+            Process.Start(startInfo);
+
+            // Poll for a new window that didn't exist before
+            WindowInfo? newWindow = null;
+            for (int i = 0; i < 100; i++)
+            {
+                await Task.Delay(100);
+                var current = _windowManager.EnumerateWindows();
+                newWindow = current.FirstOrDefault(w => !existingHandles.Contains(w.Handle));
+                if (newWindow != null)
+                    break;
+            }
+
+            if (newWindow == null) return;
+
+            RefreshWindowList();
+            var windowInfo = _availableWindows.FirstOrDefault(w => w.Handle == newWindow.Handle);
+            if (windowInfo != null)
+            {
+                WindowSelected?.Invoke(this, windowInfo);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to launch quick app {app.Name}: {ex.Message}");
         }
     }
 }

@@ -50,6 +50,19 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _selectedTheme = "Dark";
 
+    // Quick Launch
+    [ObservableProperty]
+    private ObservableCollection<QuickLaunchApp> _quickLaunchApps = new();
+
+    [ObservableProperty]
+    private QuickLaunchApp? _selectedQuickLaunchApp;
+
+    [ObservableProperty]
+    private string _selectedQuickLaunchAppArguments = string.Empty;
+
+    [ObservableProperty]
+    private string _newQuickLaunchPath = string.Empty;
+
     // Tile Sets
     [ObservableProperty]
     private ObservableCollection<TileSetItem> _tileSets = new();
@@ -74,6 +87,12 @@ public partial class SettingsViewModel : ObservableObject
         foreach (var app in settings.StartupApplications)
         {
             StartupApplications.Add(app);
+        }
+
+        QuickLaunchApps.Clear();
+        foreach (var app in settings.QuickLaunchApps)
+        {
+            QuickLaunchApps.Add(app);
         }
 
         RebuildTileSets();
@@ -123,6 +142,20 @@ public partial class SettingsViewModel : ObservableObject
         {
             SelectedStartupApplication.Arguments = value;
             _settingsManager.SaveStartupApplication();
+        }
+    }
+
+    partial void OnSelectedQuickLaunchAppChanged(QuickLaunchApp? value)
+    {
+        SelectedQuickLaunchAppArguments = value?.Arguments ?? string.Empty;
+    }
+
+    partial void OnSelectedQuickLaunchAppArgumentsChanged(string value)
+    {
+        if (SelectedQuickLaunchApp != null && SelectedQuickLaunchApp.Arguments != value)
+        {
+            SelectedQuickLaunchApp.Arguments = value;
+            _settingsManager.SaveQuickLaunchApp();
         }
     }
 
@@ -178,6 +211,89 @@ public partial class SettingsViewModel : ObservableObject
         _settingsManager.RemoveStartupApplication(SelectedStartupApplication);
         StartupApplications.Remove(SelectedStartupApplication);
         SelectedStartupApplication = null;
+    }
+
+    // --- Quick Launch commands ---
+
+    [RelayCommand]
+    private void BrowseQuickLaunchApp()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select Application",
+            Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            NewQuickLaunchPath = dialog.FileName;
+        }
+    }
+
+    [RelayCommand]
+    private void AddQuickLaunchApp()
+    {
+        if (string.IsNullOrWhiteSpace(NewQuickLaunchPath)) return;
+
+        var input = NewQuickLaunchPath.Trim();
+        ParsePathAndArguments(input, out var path, out var arguments);
+        var name = Path.GetFileNameWithoutExtension(path);
+
+        var app = _settingsManager.AddQuickLaunchApp(path, arguments, name);
+        QuickLaunchApps.Add(app);
+        NewQuickLaunchPath = string.Empty;
+    }
+
+    private static void ParsePathAndArguments(string input, out string path, out string arguments)
+    {
+        // "C:\Program Files\app.exe" --flag
+        if (input.StartsWith('"'))
+        {
+            var closeQuote = input.IndexOf('"', 1);
+            if (closeQuote > 0)
+            {
+                path = input[1..closeQuote];
+                arguments = input[(closeQuote + 1)..].TrimStart();
+                return;
+            }
+        }
+
+        // C:\path\to\app.exe --flag  (split after .exe / .cmd / .bat / .com)
+        var extPattern = new[] { ".exe ", ".cmd ", ".bat ", ".com " };
+        foreach (var ext in extPattern)
+        {
+            var idx = input.IndexOf(ext, StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+            {
+                var splitAt = idx + ext.Length - 1; // position of the space
+                path = input[..splitAt].Trim();
+                arguments = input[(splitAt + 1)..].TrimStart();
+                return;
+            }
+        }
+
+        // Simple command: "code --new-window" → split on first space
+        var spaceIdx = input.IndexOf(' ');
+        if (spaceIdx > 0)
+        {
+            path = input[..spaceIdx];
+            arguments = input[(spaceIdx + 1)..].TrimStart();
+            return;
+        }
+
+        path = input;
+        arguments = string.Empty;
+    }
+
+    [RelayCommand]
+    private void RemoveQuickLaunchApp()
+    {
+        if (SelectedQuickLaunchApp == null) return;
+
+        _settingsManager.RemoveQuickLaunchApp(SelectedQuickLaunchApp);
+        QuickLaunchApps.Remove(SelectedQuickLaunchApp);
+        SelectedQuickLaunchApp = null;
     }
 
     // --- Tile Set commands ---

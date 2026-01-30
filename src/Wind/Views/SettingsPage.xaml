@@ -115,6 +115,81 @@
                 </StackPanel>
             </Border>
 
+            <!-- Quick Launch Section -->
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                <StackPanel>
+                    <StackPanel Margin="0,0,0,12">
+                        <TextBlock Text="Quick Launch Apps" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="Apps shown in the window picker for quick access. Enter a command name (e.g. code, wt) or browse for an .exe file." FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <!-- Add new app: text input + browse + add -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox Text="{Binding NewQuickLaunchPath, UpdateSourceTrigger=PropertyChanged}"
+                                   PlaceholderText="e.g. code, wt, or C:\path\to\app.exe"
+                                   KeyDown="QuickLaunchPath_KeyDown"/>
+                        <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon FolderOpen24}"
+                                  Command="{Binding BrowseQuickLaunchAppCommand}"
+                                  ToolTip="Browse..." Margin="4,0,0,0"/>
+                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Add24}"
+                                  Command="{Binding AddQuickLaunchAppCommand}"
+                                  ToolTip="Add" Margin="4,0,0,0"/>
+                    </Grid>
+
+                    <!-- App list -->
+                    <ListBox ItemsSource="{Binding QuickLaunchApps}"
+                             SelectedItem="{Binding SelectedQuickLaunchApp}"
+                             MinHeight="80" MaxHeight="150"
+                             Background="Transparent"
+                             BorderThickness="1"
+                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="4">
+                                    <ui:SymbolIcon Symbol="WindowConsole20" Margin="0,0,8,0"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding Path}" FontSize="11"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis" MaxWidth="450"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Selected app controls: arguments + remove -->
+                    <Grid Margin="0,12,0,0"
+                          Visibility="{Binding SelectedQuickLaunchApp, Converter={StaticResource NotNullConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Arguments" VerticalAlignment="Center" Margin="0,0,12,0"
+                                   FontWeight="SemiBold" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox Grid.Column="1"
+                                   Text="{Binding SelectedQuickLaunchAppArguments, UpdateSourceTrigger=PropertyChanged}"
+                                   PlaceholderText="e.g. --flag value"/>
+                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Delete24}"
+                                  Command="{Binding RemoveQuickLaunchAppCommand}"
+                                  ToolTip="Remove Selected" Margin="4,0,0,0"/>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
             <!-- Tile Sets Section -->
             <TextBlock Text="Tile Sets" FontSize="20" FontWeight="SemiBold" Margin="0,24,0,16"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
