@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private Views.SettingsPage? _settingsPage;
     private string _currentTabPosition = "Top";
     private WindowResizeHelper? _resizeHelper;
+    private bool _isTabBarCollapsed;
 
     public MainWindow()
     {
@@ -135,6 +136,10 @@ public partial class MainWindow : Window
         TabBarSeparator.Visibility = Visibility.Collapsed;
         TabBarSeparator.ClearValue(WidthProperty);
         TabBarSeparator.ClearValue(HeightProperty);
+
+        // Reset collapsed state
+        _isTabBarCollapsed = false;
+        AddWindowButton.Visibility = Visibility.Visible;
     }
 
     private void ApplyTabHeaderPosition(string position)
@@ -385,6 +390,51 @@ public partial class MainWindow : Window
         Chrome.CaptionHeight = 0;
     }
 
+    private void ToggleTabBarCollapsed()
+    {
+        if (_currentTabPosition is not ("Left" or "Right"))
+            return;
+
+        _isTabBarCollapsed = !_isTabBarCollapsed;
+
+        if (_isTabBarCollapsed)
+        {
+            // Collapse: icon-only mode
+            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("CollapsedVerticalTabItemTemplate");
+            TabBarArea.MinWidth = 0;
+            TabBarArea.MaxWidth = double.PositiveInfinity;
+            TabBarArea.Width = 40;
+            AddWindowButton.Visibility = Visibility.Collapsed;
+
+            // Hide window control button text, keep icons compact
+            foreach (UIElement child in WindowControlsPanel.Children)
+            {
+                if (child is Button btn)
+                {
+                    btn.Width = 36;
+                    btn.Height = 28;
+                }
+            }
+        }
+        else
+        {
+            // Expand: restore full vertical mode
+            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("VerticalTabItemTemplate");
+            TabBarArea.ClearValue(WidthProperty);
+            TabBarArea.MinWidth = 180;
+            TabBarArea.MaxWidth = 300;
+            AddWindowButton.Visibility = Visibility.Visible;
+
+            SetButtonSizesForMode(isVertical: true);
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            UpdateWindowHostSize();
+            UpdateBlockerPosition();
+        });
+    }
+
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _hotkeyManager.Initialize(this);
@@ -567,8 +617,15 @@ public partial class MainWindow : Window
     {
         if (e.ClickCount == 2)
         {
-            // Double-click to maximize/restore
-            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            if (_currentTabPosition is "Left" or "Right")
+            {
+                ToggleTabBarCollapsed();
+            }
+            else
+            {
+                // Double-click to maximize/restore
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            }
         }
         else
         {
@@ -597,7 +654,14 @@ public partial class MainWindow : Window
         {
             if (e.ClickCount == 2)
             {
-                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                if (_currentTabPosition is "Left" or "Right")
+                {
+                    ToggleTabBarCollapsed();
+                }
+                else
+                {
+                    WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                }
                 e.Handled = true;
             }
             else
@@ -672,6 +736,13 @@ public partial class MainWindow : Window
     {
         if (sender is FrameworkElement element && element.Tag is Models.TabItem tab)
         {
+            if (e.ClickCount == 2 && _currentTabPosition is "Left" or "Right")
+            {
+                ToggleTabBarCollapsed();
+                e.Handled = true;
+                return;
+            }
+
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
             {
                 _viewModel.ToggleMultiSelectCommand.Execute(tab);

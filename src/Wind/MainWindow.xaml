@@ -241,6 +241,29 @@
                 </Grid>
             </Border>
         </DataTemplate>
+        <!-- Collapsed vertical tab template (icon only, for collapsed sidebar) -->
+        <DataTemplate x:Key="CollapsedVerticalTabItemTemplate">
+            <Border Style="{StaticResource TabItemVerticalStyle}"
+                    MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
+                    MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                    WindowChrome.IsHitTestVisibleInChrome="True"
+                    Tag="{Binding}"
+                    HorizontalAlignment="Center"
+                    Padding="8,6">
+                <Border.ContextMenu>
+                    <ContextMenu Tag="{Binding}">
+                        <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
+                        <MenuItem Header="タイル解除" Click="StopTile_Click"
+                                  Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
+                        <Separator/>
+                        <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <Image Source="{Binding Icon}" Width="16" Height="16"
+                       VerticalAlignment="Center" ToolTip="{Binding Title}"/>
+            </Border>
+        </DataTemplate>
+
     </Window.Resources>
 
     <Border x:Name="MainBorder" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
