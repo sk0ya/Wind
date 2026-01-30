@@ -11,6 +11,7 @@ public class WindowResizeHelper : IDisposable
 {
     private readonly IntPtr _parentHwnd;
     private readonly IntPtr[] _gripHwnds = new IntPtr[4];
+    private IntPtr _blockerHwnd;
     private bool _disposed;
     private bool _visible = true;
 
@@ -21,6 +22,7 @@ public class WindowResizeHelper : IDisposable
     private const int RIGHT = 1;
     private const int TOP = 2;
     private const int BOTTOM = 3;
+    private const int BLOCKER = 4;
 
     private static readonly Dictionary<IntPtr, (WindowResizeHelper Helper, int Edge)> _hwndMap = new();
     private static WndProcDelegate? _wndProcDelegate;
@@ -244,6 +246,10 @@ public class WindowResizeHelper : IDisposable
                 SetWindowPos(_gripHwnds[i], HWND_TOP, 0, 0, 0, 0,
                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         }
+
+        if (_blockerHwnd != IntPtr.Zero)
+            SetWindowPos(_blockerHwnd, HWND_TOP, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     /// <summary>
@@ -261,13 +267,85 @@ public class WindowResizeHelper : IDisposable
                 ShowWindow(_gripHwnds[i], visible ? SW_SHOW : SW_HIDE);
         }
 
+        if (_blockerHwnd != IntPtr.Zero)
+            ShowWindow(_blockerHwnd, visible ? SW_SHOW : SW_HIDE);
+
         if (visible) BringToTop();
+    }
+
+    /// <summary>
+    /// Places a blocker overlay at the internal boundary between tab bar and content.
+    /// This overlay absorbs mouse events with a default arrow cursor and does not resize.
+    /// Coordinates are in physical (Win32) pixels relative to the parent window's client area.
+    /// </summary>
+    public void SetBlocker(int x, int y, int width, int height)
+    {
+        if (_blockerHwnd == IntPtr.Zero)
+        {
+            _blockerHwnd = CreateWindowEx(
+                0, ClassName, "",
+                WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
+                x, y, width, height,
+                _parentHwnd, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
+
+            if (_blockerHwnd == IntPtr.Zero) return;
+
+            int exStyle = GetWindowLong(_blockerHwnd, GWL_EXSTYLE);
+            SetWindowLong(_blockerHwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+            SetLayeredWindowAttributes(_blockerHwnd, 0, 1, LWA_ALPHA);
+
+            _hwndMap[_blockerHwnd] = (this, BLOCKER);
+        }
+        else
+        {
+            MoveWindow(_blockerHwnd, x, y, width, height, true);
+        }
+
+        if (_visible)
+            SetWindowPos(_blockerHwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    /// <summary>
+    /// Removes the blocker overlay (e.g. when switching to Top/Bottom tab layout).
+    /// </summary>
+    public void ClearBlocker()
+    {
+        if (_blockerHwnd != IntPtr.Zero)
+        {
+            _hwndMap.Remove(_blockerHwnd);
+            DestroyWindow(_blockerHwnd);
+            _blockerHwnd = IntPtr.Zero;
+        }
     }
 
     private static IntPtr GripWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
         if (!_hwndMap.TryGetValue(hWnd, out var info))
             return DefWindowProc(hWnd, msg, wParam, lParam);
+
+        // Blocker overlay: absorb mouse events with default cursor, no resize
+        if (info.Edge == BLOCKER)
+        {
+            switch (msg)
+            {
+                case WM_SETCURSOR:
+                    SetCursor(LoadCursor(IntPtr.Zero, IDC_ARROW));
+                    return (IntPtr)1;
+
+                case WM_LBUTTONDOWN:
+                    return IntPtr.Zero;
+
+                case WM_PAINT:
+                    BeginPaint(hWnd, out var bps);
+                    EndPaint(hWnd, ref bps);
+                    return IntPtr.Zero;
+
+                case WM_NCDESTROY:
+                    _hwndMap.Remove(hWnd);
+                    return DefWindowProc(hWnd, msg, wParam, lParam);
+            }
+            return DefWindowProc(hWnd, msg, wParam, lParam);
+        }
 
         switch (msg)
         {
@@ -354,5 +432,7 @@ public class WindowResizeHelper : IDisposable
                 _gripHwnds[i] = IntPtr.Zero;
             }
         }
+
+        ClearBlocker();
     }
 }

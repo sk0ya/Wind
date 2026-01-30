@@ -96,6 +96,7 @@ public partial class MainWindow : Window
         {
             ApplyTabHeaderPosition(position);
             UpdateWindowHostSize();
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateBlockerPosition);
         });
     }
 
@@ -467,12 +468,66 @@ public partial class MainWindow : Window
     {
         UpdateWindowHostSize();
         _resizeHelper?.UpdatePositions();
+        UpdateBlockerPosition();
     }
 
     private void WindowHostContainer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateWindowHostSize();
     }
+
+    private void UpdateBlockerPosition()
+    {
+        if (_resizeHelper == null) return;
+
+        // Get DPI scale factor
+        var source = PresentationSource.FromVisual(this);
+        double dpiScaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+        double dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+        // Get ContentPanel position relative to the main window
+        var contentPos = ContentPanel.TranslatePoint(new Point(0, 0), this);
+        int grip = (int)(GripSize * dpiScaleX);
+        int parentWidth = (int)(ActualWidth * dpiScaleX);
+        int parentHeight = (int)(ActualHeight * dpiScaleY);
+
+        switch (_currentTabPosition)
+        {
+            case "Left":
+            {
+                // Vertical blocker at the left edge of content (adjacent to tab bar)
+                int x = (int)(contentPos.X * dpiScaleX);
+                _resizeHelper.SetBlocker(x, 0, grip, parentHeight);
+                break;
+            }
+            case "Right":
+            {
+                // Vertical blocker at the right edge of content (adjacent to tab bar)
+                int x = (int)((contentPos.X + ContentPanel.ActualWidth) * dpiScaleX) - grip;
+                _resizeHelper.SetBlocker(x, 0, grip, parentHeight);
+                break;
+            }
+            case "Top":
+            {
+                // Horizontal blocker at the top edge of content (adjacent to tab bar)
+                int y = (int)(contentPos.Y * dpiScaleY);
+                _resizeHelper.SetBlocker(0, y, parentWidth, grip);
+                break;
+            }
+            case "Bottom":
+            {
+                // Horizontal blocker at the bottom edge of content (adjacent to tab bar)
+                int y = (int)((contentPos.Y + ContentPanel.ActualHeight) * dpiScaleY) - grip;
+                _resizeHelper.SetBlocker(0, y, parentWidth, grip);
+                break;
+            }
+            default:
+                _resizeHelper.ClearBlocker();
+                break;
+        }
+    }
+
+    private const int GripSize = 6;
 
     private void Window_StateChanged(object sender, EventArgs e)
     {
