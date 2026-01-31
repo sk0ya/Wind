@@ -267,7 +267,7 @@
 
     </Window.Resources>
 
-    <Border x:Name="MainBorder" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+    <Border x:Name="MainBorder" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0">
         <Grid x:Name="RootGrid">
             <!-- Row/Column definitions set by code-behind via ApplyTabHeaderPosition -->
 

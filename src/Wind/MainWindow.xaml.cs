@@ -595,13 +595,11 @@ public partial class MainWindow : Window
         if (WindowState == WindowState.Maximized)
         {
             MaximizeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.SquareMultiple24;
-            MainBorder.BorderThickness = new Thickness(0);
             _resizeHelper?.SetVisible(false);
         }
         else
         {
             MaximizeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Maximize24;
-            MainBorder.BorderThickness = new Thickness(1);
             _resizeHelper?.SetVisible(true);
         }
 
