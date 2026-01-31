@@ -617,15 +617,8 @@ public partial class MainWindow : Window
     {
         if (e.ClickCount == 2)
         {
-            if (_currentTabPosition is "Left" or "Right")
-            {
-                ToggleTabBarCollapsed();
-            }
-            else
-            {
-                // Double-click to maximize/restore
-                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-            }
+            // Double-click on title bar empty area to maximize/restore
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         }
         else
         {
@@ -654,14 +647,8 @@ public partial class MainWindow : Window
         {
             if (e.ClickCount == 2)
             {
-                if (_currentTabPosition is "Left" or "Right")
-                {
-                    ToggleTabBarCollapsed();
-                }
-                else
-                {
-                    WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-                }
+                // Double-click on tab area empty space to maximize/restore
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
                 e.Handled = true;
             }
             else
