@@ -25,6 +25,10 @@ public class WindowHost : HwndHost
     public event EventHandler? HostedWindowClosed;
     public event EventHandler? MinimizeRequested;
     public event EventHandler? MaximizeRequested;
+    /// <summary>
+    /// Fired when the hosted window is being dragged. Parameters are (dx, dy) in physical pixels.
+    /// </summary>
+    public event Action<int, int>? MoveRequested;
 
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern IntPtr CreateWindowEx(
@@ -59,15 +63,21 @@ public class WindowHost : HwndHost
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
+    private const uint EVENT_SYSTEM_MOVESIZESTART = 0x000A;
+    private const uint EVENT_SYSTEM_MOVESIZEEND = 0x000B;
     private const uint EVENT_SYSTEM_MINIMIZESTART = 0x0016;
     private const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
     private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
     private const int OBJID_WINDOW = 0;
 
+    private IntPtr _winEventHookMoveSize;
     private IntPtr _winEventHookMinimize;
     private IntPtr _winEventHookLocation;
     private WinEventDelegate? _winEventProc;
     private bool _wasMaximized;
+
+    // Move tracking state
+    private bool _isHostedMoving;
 
     [DllImport("user32.dll")]
     private static extern bool IsZoomed(IntPtr hWnd);
@@ -231,12 +241,17 @@ public class WindowHost : HwndHost
 
         _winEventProc = WinEventCallback;
 
+        // Hook for move/size start and end
+        _winEventHookMoveSize = SetWinEventHook(
+            EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND,
+            IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
+
         // Hook for minimize events
         _winEventHookMinimize = SetWinEventHook(
             EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZESTART,
             IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
 
-        // Hook for location/size changes to detect maximize
+        // Hook for location/size changes to detect maximize and move
         _winEventHookLocation = SetWinEventHook(
             EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE,
             IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
@@ -244,6 +259,11 @@ public class WindowHost : HwndHost
 
     private void RemoveWinEventHook()
     {
+        if (_winEventHookMoveSize != IntPtr.Zero)
+        {
+            UnhookWinEvent(_winEventHookMoveSize);
+            _winEventHookMoveSize = IntPtr.Zero;
+        }
         if (_winEventHookMinimize != IntPtr.Zero)
         {
             UnhookWinEvent(_winEventHookMinimize);
@@ -263,7 +283,24 @@ public class WindowHost : HwndHost
     {
         if (hwnd != _hostedWindowHandle) return;
 
-        if (eventType == EVENT_SYSTEM_MINIMIZESTART)
+        if (eventType == EVENT_SYSTEM_MOVESIZESTART)
+        {
+            _isHostedMoving = true;
+        }
+        else if (eventType == EVENT_SYSTEM_MOVESIZEEND)
+        {
+            if (_isHostedMoving)
+            {
+                _isHostedMoving = false;
+                // Reset hosted window to fill host
+                if (_hwndHost != IntPtr.Zero)
+                {
+                    NativeMethods.GetWindowRect(_hwndHost, out var hostRect);
+                    NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, hostRect.Width, hostRect.Height, true);
+                }
+            }
+        }
+        else if (eventType == EVENT_SYSTEM_MINIMIZESTART)
         {
             // The hosted window is trying to minimize
             // Restore it immediately and minimize Wind instead
@@ -273,17 +310,35 @@ public class WindowHost : HwndHost
         else if (eventType == EVENT_OBJECT_LOCATIONCHANGE && idObject == OBJID_WINDOW)
         {
             // Check if window became maximized
-            bool isMaximized = IsZoomed(_hostedWindowHandle);
-            if (isMaximized && !_wasMaximized)
+            if (!_isHostedMoving)
             {
-                // Window just became maximized - restore it and maximize Wind instead
-                _wasMaximized = true;
-                NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_RESTORE);
-                MaximizeRequested?.Invoke(this, EventArgs.Empty);
+                bool isMaximized = IsZoomed(_hostedWindowHandle);
+                if (isMaximized && !_wasMaximized)
+                {
+                    _wasMaximized = true;
+                    NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_RESTORE);
+                    MaximizeRequested?.Invoke(this, EventArgs.Empty);
+                }
+                else if (!isMaximized)
+                {
+                    _wasMaximized = false;
+                }
             }
-            else if (!isMaximized)
+
+            // During a hosted window move, detect displacement from host
+            // and translate it to Wind movement, then reset position.
+            if (_isHostedMoving && _hwndHost != IntPtr.Zero &&
+                NativeMethods.GetWindowRect(_hostedWindowHandle, out var hostedRect) &&
+                NativeMethods.GetWindowRect(_hwndHost, out var hostRect))
             {
-                _wasMaximized = false;
+                int dx = hostedRect.Left - hostRect.Left;
+                int dy = hostedRect.Top - hostRect.Top;
+
+                if (dx != 0 || dy != 0)
+                {
+                    MoveRequested?.Invoke(dx, dy);
+                    NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, hostRect.Width, hostRect.Height, true);
+                }
             }
         }
     }
@@ -344,8 +399,12 @@ public class WindowHost : HwndHost
         // Resize host window
         NativeMethods.MoveWindow(_hwndHost, 0, 0, width, height, true);
 
-        // Resize hosted window to fill the host
-        NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, width, height, true);
+        // Don't reset hosted window position during a move operation —
+        // it would break the system move loop.
+        if (!_isHostedMoving)
+        {
+            NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, width, height, true);
+        }
     }
 
     protected override void OnWindowPositionChanged(Rect rcBoundingBox)

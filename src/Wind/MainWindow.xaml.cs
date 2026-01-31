@@ -71,6 +71,16 @@ public partial class MainWindow : Window
         {
             WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         };
+        _tabManager.MoveRequested += (dx, dy) =>
+        {
+            // Convert physical pixels to WPF device-independent units
+            var source = PresentationSource.FromVisual(this);
+            double dpiScaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+            double dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+            Left += dx / dpiScaleX;
+            Top += dy / dpiScaleY;
+        };
 
         _tabManager.TileLayoutUpdated += (s, e) =>
         {

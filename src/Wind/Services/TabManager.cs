@@ -54,6 +54,7 @@ public class TabManager
     public event EventHandler? TileLayoutUpdated;
     public event EventHandler? MinimizeRequested;
     public event EventHandler? MaximizeRequested;
+    public event Action<int, int>? MoveRequested;
 
     public TabManager(WindowManager windowManager)
     {
@@ -84,6 +85,7 @@ public class TabManager
         host.HostedWindowClosed += (s, e) => OnHostedWindowClosed(tab);
         host.MinimizeRequested += (s, e) => MinimizeRequested?.Invoke(this, EventArgs.Empty);
         host.MaximizeRequested += (s, e) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
+        host.MoveRequested += (dx, dy) => MoveRequested?.Invoke(dx, dy);
 
         Tabs.Add(tab);
 
