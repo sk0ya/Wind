@@ -14,6 +14,12 @@ public class AppSettings
     public string CloseWindowsOnExit { get; set; } = "None";
     public List<QuickLaunchApp> QuickLaunchApps { get; set; } = new();
     public string TabHeaderPosition { get; set; } = "Top";
+    /// <summary>
+    /// "CloseApp" = close the embedded application (default),
+    /// "ReleaseEmbed" = release embedding and restore to desktop,
+    /// "CloseWind" = close Wind application
+    /// </summary>
+    public string EmbedCloseAction { get; set; } = "CloseApp";
 }
 
 public class StartupApplication

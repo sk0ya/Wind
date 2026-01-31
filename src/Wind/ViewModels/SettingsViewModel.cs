@@ -53,6 +53,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _tabHeaderPosition = "Top";
 
+    [ObservableProperty]
+    private string _embedCloseAction = "CloseApp";
+
     // Quick Launch
     [ObservableProperty]
     private ObservableCollection<QuickLaunchApp> _quickLaunchApps = new();
@@ -99,6 +102,7 @@ public partial class SettingsViewModel : ObservableObject
         CloseWindowsOnExit = settings.CloseWindowsOnExit;
         SelectedTheme = settings.Theme;
         TabHeaderPosition = settings.TabHeaderPosition;
+        EmbedCloseAction = settings.EmbedCloseAction;
         StartupApplications.Clear();
         foreach (var app in settings.StartupApplications)
         {
@@ -321,6 +325,13 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnTabHeaderPositionChanged(string value)
     {
         _settingsManager.SetTabHeaderPosition(value);
+    }
+
+    partial void OnEmbedCloseActionChanged(string value)
+    {
+        System.Diagnostics.Debug.WriteLine($"EmbedCloseAction changed to: {value}");
+        _settingsManager.Settings.EmbedCloseAction = value;
+        _settingsManager.SaveSettings();
     }
 
     [RelayCommand]

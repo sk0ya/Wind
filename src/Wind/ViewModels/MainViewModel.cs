@@ -162,7 +162,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void CloseTab(TabItem tab)
     {
-        _tabManager.RemoveTab(tab);
+        _tabManager.CloseTab(tab);
         StatusMessage = $"Closed: {tab.Title}";
     }
 

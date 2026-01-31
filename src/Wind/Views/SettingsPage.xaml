@@ -295,6 +295,29 @@
                 </StackPanel>
             </Border>
 
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="6" Padding="12,8" Margin="0,0,0,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="埋め込みアプリを閉じるとき" VerticalAlignment="Center" Margin="0,0,16,0"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <RadioButton Content="アプリを閉じる" GroupName="EmbedCloseAction" Margin="0,0,8,0"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     IsChecked="{Binding EmbedCloseAction, Converter={StaticResource StringEqualsConverter}, ConverterParameter=CloseApp}"/>
+                        <RadioButton Content="埋め込み解除" GroupName="EmbedCloseAction" Margin="0,0,8,0"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     IsChecked="{Binding EmbedCloseAction, Converter={StaticResource StringEqualsConverter}, ConverterParameter=ReleaseEmbed}"/>
+                        <RadioButton Content="Windを閉じる" GroupName="EmbedCloseAction"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     IsChecked="{Binding EmbedCloseAction, Converter={StaticResource StringEqualsConverter}, ConverterParameter=CloseWind}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Appearance Section -->
             <TextBlock Text="Appearance" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,6"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>

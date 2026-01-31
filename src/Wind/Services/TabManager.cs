@@ -9,6 +9,7 @@ namespace Wind.Services;
 public class TabManager
 {
     private readonly WindowManager _windowManager;
+    private readonly SettingsManager _settingsManager;
     private readonly Dictionary<Guid, WindowHost> _windowHosts = new();
     private readonly Dispatcher _dispatcher;
 
@@ -55,10 +56,12 @@ public class TabManager
     public event EventHandler? MinimizeRequested;
     public event EventHandler? MaximizeRequested;
     public event Action<int, int>? MoveRequested;
+    public event EventHandler? CloseWindRequested;
 
-    public TabManager(WindowManager windowManager)
+    public TabManager(WindowManager windowManager, SettingsManager settingsManager)
     {
         _windowManager = windowManager;
+        _settingsManager = settingsManager;
         _dispatcher = Dispatcher.CurrentDispatcher;
     }
 
@@ -197,12 +200,63 @@ public class TabManager
 
     public void CloseTab(TabItem tab)
     {
-        if (tab.Window?.Handle != IntPtr.Zero)
+        var closeAction = _settingsManager.Settings.EmbedCloseAction;
+        System.Diagnostics.Debug.WriteLine($"CloseTab called with action: {closeAction}");
+        
+        switch (closeAction)
         {
-            // Send close message to the original window
-            NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            case "CloseApp":
+                // Default behavior: close the embedded application
+                if (tab.Window?.Handle != IntPtr.Zero)
+                {
+                    NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                }
+                RemoveTab(tab);
+                break;
+                
+            case "ReleaseEmbed":
+                // Update tile layout if this tab was tiled
+                UpdateTileForRemovedTab(tab);
+                
+                // Release embedding and restore to desktop
+                if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
+                {
+                    _windowManager.ReleaseWindow(host);
+                    _windowHosts.Remove(tab.Id);
+                }
+                
+                // Remove from group if in one
+                tab.Group?.RemoveTab(tab);
+                
+                var index = Tabs.IndexOf(tab);
+                Tabs.Remove(tab);
+                
+                TabRemoved?.Invoke(this, tab);
+                
+                // Select adjacent tab
+                if (ActiveTab == tab)
+                {
+                    if (Tabs.Count > 0)
+                    {
+                        var newIndex = Math.Min(index, Tabs.Count - 1);
+                        ActiveTab = Tabs[newIndex];
+                    }
+                    else
+                    {
+                        ActiveTab = null;
+                    }
+                }
+                break;
+                
+            case "CloseWind":
+                // Close Wind application
+                CloseWindRequested?.Invoke(this, EventArgs.Empty);
+                break;
+                
+            default:
+                // Fallback to default behavior
+                goto case "CloseApp";
         }
-        RemoveTab(tab);
     }
 
     public WindowHost? GetWindowHost(TabItem tab)

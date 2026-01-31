@@ -81,6 +81,10 @@ public partial class MainWindow : Window
             Left += dx / dpiScaleX;
             Top += dy / dpiScaleY;
         };
+        _tabManager.CloseWindRequested += (s, e) =>
+        {
+            Close();
+        };
 
         _tabManager.TileLayoutUpdated += (s, e) =>
         {
