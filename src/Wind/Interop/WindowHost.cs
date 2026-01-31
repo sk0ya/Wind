@@ -396,11 +396,8 @@ public class WindowHost : HwndHost
     {
         if (_hwndHost == IntPtr.Zero || _hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
 
-        // Resize host window
-        NativeMethods.MoveWindow(_hwndHost, 0, 0, width, height, true);
-
-        // Don't reset hosted window position during a move operation —
-        // it would break the system move loop.
+        // Only resize the hosted window within the host.
+        // _hwndHost position is managed by HwndHost base class — do not move it.
         if (!_isHostedMoving)
         {
             NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, width, height, true);
