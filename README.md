@@ -1,92 +1,128 @@
 # Wind - Windows Tab Manager
 
-A modern Windows application that allows you to manage multiple windows in a tabbed interface, similar to browser tabs.
+デスクトップ上の複数ウィンドウをブラウザのタブのように一つの画面にまとめて管理できる Windows アプリケーションです。
 
-## Features
+## できること
 
-- **Tab Management**: Embed any Windows application into tabs
-- **Tab Groups**: Organize tabs into color-coded groups
-- **Hotkey Support**: Quick keyboard shortcuts for tab navigation
-- **Modern UI**: Windows 11 Fluent Design with Mica backdrop
+### タブでウィンドウを管理
+- 起動中の任意のアプリケーションウィンドウをタブとして取り込める
+- タブのクリックやキーボードショートカットで瞬時に切り替え
+- 不要になったタブを閉じるか、元のウィンドウとして解放できる
 
-## Requirements
+### タブグループで整理
+- 関連するタブを色分けされたグループにまとめられる
+- ドラッグ＆ドロップでタブをグループ間で移動
+- グループの展開・折りたたみで表示を整理
 
-- Windows 10/11
+### タイル表示
+- 複数のウィンドウをグリッド状に並べて同時に表示できる
+- 画面分割で複数アプリを見比べながら作業可能
+
+### コマンドパレット
+- `Alt + P` でコマンドパレットを起動
+- キーワード検索でコマンドをすばやく実行
+
+### クイック起動
+- よく使うアプリケーションをショートカットとして登録
+- ウィンドウ選択画面からワンクリックで起動＆タブ化
+
+### スタートアップ連携
+- Wind 起動時に自動で開くアプリケーションを設定可能
+- Windows 起動時に Wind 自体を自動起動する設定にも対応
+
+### キーボードショートカット
+| ショートカット | 動作 |
+|---|---|
+| `Ctrl + Tab` | 次のタブに切り替え |
+| `Ctrl + Shift + Tab` | 前のタブに切り替え |
+| `Ctrl + 1-9` | 指定番号のタブに直接移動 |
+| `Ctrl + W` | 現在のタブを閉じる |
+| `Alt + P` | コマンドパレットを開く |
+
+ショートカットは設定画面からカスタマイズ可能です。
+
+### 設定・カスタマイズ
+- テーマ切替 (ライト / ダーク)
+- タブヘッダーの表示位置 (上部 / サイド)
+- 終了時の動作 (アプリを閉じる / ウィンドウを解放 / Wind を終了)
+
+## 動作環境
+
+- Windows 10 / 11
 - .NET 8.0 Runtime
 
-## Building
+## ビルド・実行
 
 ```bash
-cd src/Wind
-dotnet restore
-dotnet build
-```
+# ビルド
+dotnet build src/Wind/Wind.csproj
 
-## Running
-
-```bash
+# 実行
 dotnet run --project src/Wind
 ```
 
-Or run the built executable:
+または、ビルド済み実行ファイルを直接起動:
 ```bash
 src\Wind\bin\Debug\net8.0-windows\Wind.exe
 ```
 
-## Usage
+## 使い方
 
-### Adding Windows
-1. Click the "+ Add Window" button
-2. Select a window from the list
-3. The window will be embedded as a new tab
+1. Wind を起動する
+2. 「+ Add Window」ボタンをクリック
+3. 一覧から取り込みたいウィンドウを選択
+4. ウィンドウがタブとして取り込まれる
+5. タブをクリックまたはショートカットキーで切り替え
 
-### Tab Navigation
-- Click on tabs to switch between windows
-- Use `Ctrl + Tab` for next tab
-- Use `Ctrl + Shift + Tab` for previous tab
-- Use `Ctrl + 1-9` to switch to specific tabs
-- Use `Ctrl + W` to close current tab
-
-### Tab Groups
-1. Click the folder icon to create a new group
-2. Drag tabs into groups to organize them
-3. Groups are color-coded for easy identification
-
-## Architecture
+## アーキテクチャ
 
 ```
 Wind/
-├── Interop/          # Win32 API interop
+├── Interop/          # Win32 API 連携 (ウィンドウ埋め込み・ホットキー)
 │   ├── NativeMethods.cs
-│   └── WindowHost.cs
-├── Models/           # Data models
-│   ├── WindowInfo.cs
+│   ├── WindowHost.cs
+│   └── WindowResizeHelper.cs
+├── Models/           # データモデル
 │   ├── TabItem.cs
 │   ├── TabGroup.cs
-├── Services/         # Business logic
+│   ├── WindowInfo.cs
+│   ├── TileLayout.cs
+│   ├── HotkeyBinding.cs
+│   ├── AppSettings.cs
+│   └── CommandPaletteItem.cs
+├── Services/         # ビジネスロジック
 │   ├── WindowManager.cs
 │   ├── TabManager.cs
-│   └── HotkeyManager.cs
-├── ViewModels/       # MVVM ViewModels
-│   └── MainViewModel.cs
-└── Views/            # UI components
-    ├── TabBar.xaml
-    └── WindowPicker.xaml
+│   ├── HotkeyManager.cs
+│   ├── SettingsManager.cs
+│   └── DragDropService.cs
+├── ViewModels/       # MVVM ViewModel
+│   ├── MainViewModel.cs
+│   ├── WindowPickerViewModel.cs
+│   ├── SettingsViewModel.cs
+│   └── CommandPaletteViewModel.cs
+├── Views/            # UI コンポーネント
+│   ├── TabBar.xaml
+│   ├── WindowPicker.xaml
+│   ├── SettingsPage.xaml
+│   └── CommandPalette.xaml
+└── Converters/       # 値コンバーター
 ```
 
-## Technology Stack
+## 技術スタック
 
 - .NET 8.0 + WPF
-- WPF-UI (Fluent Design)
-- CommunityToolkit.Mvvm (MVVM framework)
+- WPF-UI 3.0.4 (Fluent Design / Mica バックドロップ)
+- CommunityToolkit.Mvvm (MVVM フレームワーク)
 - Microsoft.Extensions.DependencyInjection
 
-## Known Limitations
+## 既知の制限事項
 
-- Some applications may not embed properly (e.g., elevated processes)
-- UWP applications have limited support
-- Some windows may lose functionality when embedded
+- 管理者権限で実行中のプロセスのウィンドウは取り込めない場合がある
+- UWP アプリケーションのサポートは限定的
+- 一部のアプリケーションは取り込み後に機能が制限される場合がある
+- Chromium 系ブラウザ (Chrome, Edge) はイベント検知に特殊な処理が必要
 
-## License
+## ライセンス
 
 MIT License
