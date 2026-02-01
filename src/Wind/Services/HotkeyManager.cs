@@ -14,38 +14,138 @@ public class HotkeyManager : IDisposable
     private int _nextHotkeyId = 1;
     private readonly Dictionary<int, HotkeyBinding> _registeredHotkeys = new();
     private bool _disposed;
+    private SettingsManager? _settingsManager;
 
     public ObservableCollection<HotkeyBinding> Hotkeys { get; } = new();
 
     public event EventHandler<HotkeyBinding>? HotkeyPressed;
 
-    public void Initialize(Window window)
+    public void Initialize(Window window, SettingsManager settingsManager)
     {
+        _settingsManager = settingsManager;
+
         var helper = new WindowInteropHelper(window);
         _windowHandle = helper.Handle;
 
         _hwndSource = HwndSource.FromHwnd(_windowHandle);
         _hwndSource?.AddHook(WndProc);
 
-        RegisterDefaultHotkeys();
+        var customBindings = settingsManager.Settings.CustomHotkeys;
+        if (customBindings.Count > 0)
+        {
+            RegisterFromSettings(customBindings);
+        }
+        else
+        {
+            RegisterDefaultHotkeys();
+        }
     }
 
-    private void RegisterDefaultHotkeys()
+    public static List<(string Name, System.Windows.Input.ModifierKeys Modifiers, Key Key, HotkeyAction Action)> GetDefaultBindings()
     {
-        // Default hotkeys - can be customized
-        RegisterHotkey("Next Tab", System.Windows.Input.ModifierKeys.Control, Key.Tab, HotkeyAction.NextTab);
-        RegisterHotkey("Previous Tab", System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift, Key.Tab, HotkeyAction.PreviousTab);
-        RegisterHotkey("Close Tab", System.Windows.Input.ModifierKeys.Control, Key.W, HotkeyAction.CloseTab);
+        var defaults = new List<(string, System.Windows.Input.ModifierKeys, Key, HotkeyAction)>
+        {
+            ("Next Tab", System.Windows.Input.ModifierKeys.Control, Key.Tab, HotkeyAction.NextTab),
+            ("Previous Tab", System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift, Key.Tab, HotkeyAction.PreviousTab),
+            ("Close Tab", System.Windows.Input.ModifierKeys.Control, Key.W, HotkeyAction.CloseTab),
+            ("Command Palette", System.Windows.Input.ModifierKeys.Alt, Key.P, HotkeyAction.CommandPalette),
+        };
 
-        RegisterHotkey("Command Palette", System.Windows.Input.ModifierKeys.Alt, Key.P, HotkeyAction.CommandPalette);
-
-        // Tab switching 1-9
         for (int i = 1; i <= 9; i++)
         {
             var action = (HotkeyAction)(HotkeyAction.SwitchToTab1 + i - 1);
             var key = (Key)(Key.D1 + i - 1);
-            RegisterHotkey($"Switch to Tab {i}", System.Windows.Input.ModifierKeys.Control, key, action);
+            defaults.Add(($"Switch to Tab {i}", System.Windows.Input.ModifierKeys.Control, key, action));
         }
+
+        return defaults;
+    }
+
+    private void RegisterDefaultHotkeys()
+    {
+        foreach (var (name, modifiers, key, action) in GetDefaultBindings())
+        {
+            RegisterHotkey(name, modifiers, key, action);
+        }
+    }
+
+    private void RegisterFromSettings(List<HotkeyBindingSetting> settings)
+    {
+        var defaults = GetDefaultBindings();
+
+        foreach (var setting in settings)
+        {
+            if (!Enum.TryParse<HotkeyAction>(setting.Action, out var action)) continue;
+            if (!Enum.TryParse<System.Windows.Input.ModifierKeys>(setting.Modifiers, out var modifiers)) continue;
+            if (!Enum.TryParse<Key>(setting.Key, out var key)) continue;
+
+            // デフォルトから名前を取得
+            var defaultBinding = defaults.FirstOrDefault(d => d.Action == action);
+            var name = defaultBinding.Name ?? action.ToString();
+
+            RegisterHotkey(name, modifiers, key, action);
+        }
+
+        // 設定に含まれないアクションはデフォルトで登録
+        var registeredActions = settings
+            .Where(s => Enum.TryParse<HotkeyAction>(s.Action, out _))
+            .Select(s => Enum.Parse<HotkeyAction>(s.Action))
+            .ToHashSet();
+
+        foreach (var (name, modifiers, key, action) in defaults)
+        {
+            if (!registeredActions.Contains(action))
+            {
+                RegisterHotkey(name, modifiers, key, action);
+            }
+        }
+    }
+
+    public bool UpdateHotkey(HotkeyAction action, System.Windows.Input.ModifierKeys newModifiers, Key newKey)
+    {
+        // 既存の登録を解除
+        var existing = _registeredHotkeys.Values.FirstOrDefault(h => h.Action == action);
+        if (existing is not null)
+        {
+            UnregisterHotkey(existing);
+        }
+
+        var name = existing?.Name ?? action.ToString();
+        var result = RegisterHotkey(name, newModifiers, newKey, action);
+
+        if (result)
+        {
+            SaveCurrentBindings();
+        }
+
+        return result;
+    }
+
+    public void ResetToDefaults()
+    {
+        UnregisterAllHotkeys();
+        RegisterDefaultHotkeys();
+
+        if (_settingsManager is not null)
+        {
+            _settingsManager.Settings.CustomHotkeys.Clear();
+            _settingsManager.SaveSettings();
+        }
+    }
+
+    private void SaveCurrentBindings()
+    {
+        if (_settingsManager is null) return;
+
+        var settings = _registeredHotkeys.Values.Select(h => new HotkeyBindingSetting
+        {
+            Action = h.Action.ToString(),
+            Modifiers = h.Modifiers.ToString(),
+            Key = h.Key.ToString()
+        }).ToList();
+
+        _settingsManager.Settings.CustomHotkeys = settings;
+        _settingsManager.SaveSettings();
     }
 
     public bool RegisterHotkey(string name, System.Windows.Input.ModifierKeys modifiers, Key key, HotkeyAction action, string? parameter = null)

@@ -20,6 +20,14 @@ public class AppSettings
     /// "CloseWind" = close Wind application
     /// </summary>
     public string EmbedCloseAction { get; set; } = "CloseApp";
+    public List<HotkeyBindingSetting> CustomHotkeys { get; set; } = new();
+}
+
+public class HotkeyBindingSetting
+{
+    public string Action { get; set; } = "";
+    public string Modifiers { get; set; } = "";
+    public string Key { get; set; } = "";
 }
 
 public class StartupApplication

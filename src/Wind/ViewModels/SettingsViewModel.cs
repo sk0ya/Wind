@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
@@ -7,6 +8,22 @@ using Wind.Models;
 using Wind.Services;
 
 namespace Wind.ViewModels;
+
+public partial class HotkeyBindingItem : ObservableObject
+{
+    [ObservableProperty]
+    private string _name = "";
+
+    [ObservableProperty]
+    private string _displayString = "";
+
+    [ObservableProperty]
+    private bool _isRecording;
+
+    public HotkeyAction Action { get; set; }
+    public System.Windows.Input.ModifierKeys Modifiers { get; set; }
+    public Key Key { get; set; }
+}
 
 public partial class TileSetItem : ObservableObject
 {
@@ -31,6 +48,7 @@ public partial class TileSetItem : ObservableObject
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsManager _settingsManager;
+    private readonly HotkeyManager _hotkeyManager;
 
     [ObservableProperty]
     private bool _runAtWindowsStartup;
@@ -90,9 +108,17 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _newTileSetName = string.Empty;
 
-    public SettingsViewModel(SettingsManager settingsManager)
+    // Hotkeys
+    [ObservableProperty]
+    private ObservableCollection<HotkeyBindingItem> _hotkeyBindings = new();
+
+    [ObservableProperty]
+    private HotkeyBindingItem? _recordingHotkey;
+
+    public SettingsViewModel(SettingsManager settingsManager, HotkeyManager hotkeyManager)
     {
         _settingsManager = settingsManager;
+        _hotkeyManager = hotkeyManager;
         LoadSettings();
         ScanPathExecutables();
     }
@@ -119,6 +145,7 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         RebuildTileSets();
+        LoadHotkeyBindings();
     }
 
     private void RebuildTileSets()
@@ -550,6 +577,109 @@ public partial class SettingsViewModel : ObservableObject
             tileSet.Apps[i].TilePosition = i;
         }
         _settingsManager.SaveStartupApplication();
+    }
+
+    // --- Hotkey commands ---
+
+    private void LoadHotkeyBindings()
+    {
+        HotkeyBindings.Clear();
+        foreach (var hotkey in _hotkeyManager.Hotkeys)
+        {
+            HotkeyBindings.Add(new HotkeyBindingItem
+            {
+                Name = hotkey.Name,
+                DisplayString = hotkey.DisplayString,
+                Action = hotkey.Action,
+                Modifiers = hotkey.Modifiers,
+                Key = hotkey.Key
+            });
+        }
+    }
+
+    [RelayCommand]
+    private void StartRecording(HotkeyBindingItem item)
+    {
+        // 既に録音中の項目があればキャンセル
+        if (RecordingHotkey is not null)
+        {
+            RecordingHotkey.IsRecording = false;
+        }
+
+        item.IsRecording = true;
+        RecordingHotkey = item;
+    }
+
+    [RelayCommand]
+    private void CancelRecording()
+    {
+        if (RecordingHotkey is not null)
+        {
+            RecordingHotkey.IsRecording = false;
+            RecordingHotkey = null;
+        }
+    }
+
+    public bool ApplyRecordedKey(System.Windows.Input.ModifierKeys modifiers, Key key)
+    {
+        if (RecordingHotkey is null) return false;
+
+        // 修飾キーのみの入力は無視
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin or Key.System)
+        {
+            return false;
+        }
+
+        // Escape でキャンセル
+        if (key == Key.Escape)
+        {
+            CancelRecording();
+            return true;
+        }
+
+        // 重複チェック
+        var duplicate = HotkeyBindings.FirstOrDefault(h =>
+            h != RecordingHotkey && h.Modifiers == modifiers && h.Key == key);
+
+        if (duplicate is not null)
+        {
+            // 重複がある場合は登録しない（UI側でフィードバック可能）
+            return false;
+        }
+
+        var item = RecordingHotkey;
+        var success = _hotkeyManager.UpdateHotkey(item.Action, modifiers, key);
+
+        if (success)
+        {
+            item.Modifiers = modifiers;
+            item.Key = key;
+            item.DisplayString = FormatHotkeyDisplay(modifiers, key);
+        }
+
+        item.IsRecording = false;
+        RecordingHotkey = null;
+
+        return success;
+    }
+
+    [RelayCommand]
+    private void ResetHotkeys()
+    {
+        _hotkeyManager.ResetToDefaults();
+        LoadHotkeyBindings();
+    }
+
+    private static string FormatHotkeyDisplay(System.Windows.Input.ModifierKeys modifiers, Key key)
+    {
+        var parts = new List<string>();
+        if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control)) parts.Add("Ctrl");
+        if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Alt)) parts.Add("Alt");
+        if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift)) parts.Add("Shift");
+        if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Windows)) parts.Add("Win");
+        parts.Add(key.ToString());
+        return string.Join(" + ", parts);
     }
 
     private void ApplyTheme(string theme)

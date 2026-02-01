@@ -67,4 +67,19 @@ public partial class SettingsPage : UserControl
             QuickLaunchPathBox.CaretIndex = vm.NewQuickLaunchPath.Length;
         }
     }
+
+    private void HotkeyButton_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel vm) return;
+        if (vm.RecordingHotkey is null) return;
+
+        // System キー（Alt 押下中）の場合は SystemKey を使用
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var modifiers = Keyboard.Modifiers;
+
+        if (vm.ApplyRecordedKey(modifiers, key))
+        {
+            e.Handled = true;
+        }
+    }
 }

@@ -465,7 +465,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        _hotkeyManager.Initialize(this);
+        _hotkeyManager.Initialize(this, _settingsManager);
 
         // Hook into Windows messages for proper maximize handling
         var hwnd = new WindowInteropHelper(this).Handle;
