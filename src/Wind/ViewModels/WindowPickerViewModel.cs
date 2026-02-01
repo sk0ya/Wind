@@ -152,6 +152,219 @@ public partial class WindowPickerViewModel : ObservableObject
         }
     }
 
+    private enum QuickLaunchType { Url, Folder, File, GuiApp, ConsoleApp }
+
+    /// <summary>
+    /// Resolve a bare command name (e.g. "code", "cmd") against PATH
+    /// and return the full path if found, or null.
+    /// </summary>
+    private static string? ResolveFromPath(string command)
+    {
+        var extensions = new[] { ".exe", ".com", ".cmd", ".bat" };
+        var pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
+
+        foreach (var dir in pathVar.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            foreach (var ext in extensions)
+            {
+                var candidate = Path.Combine(dir, command + ext);
+                if (System.IO.File.Exists(candidate))
+                    return candidate;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Read the PE header Subsystem field to determine if an exe is a console application.
+    /// Returns true for CUI (IMAGE_SUBSYSTEM_WINDOWS_CUI = 3),
+    /// false for GUI or on any read error.
+    /// </summary>
+    private static bool IsConsoleSubsystem(string exePath)
+    {
+        try
+        {
+            using var fs = new FileStream(exePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var reader = new BinaryReader(fs);
+
+            if (fs.Length < 0x40) return false;
+            fs.Seek(0x3C, SeekOrigin.Begin);
+            var peOffset = reader.ReadInt32();
+
+            // PE signature (4) + COFF header (20) + Subsystem is at offset 68 in optional header
+            var subsystemOffset = peOffset + 4 + 20 + 68;
+            if (fs.Length < subsystemOffset + 2) return false;
+            fs.Seek(subsystemOffset, SeekOrigin.Begin);
+            var subsystem = reader.ReadUInt16();
+
+            return subsystem == 3;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Parse a .cmd/.bat script to find the first .exe it references,
+    /// resolve %~dp0 relative to the script's directory, then check PE subsystem.
+    /// Falls back to GuiApp if no exe reference is found.
+    /// </summary>
+    private static QuickLaunchType ClassifyScript(string scriptPath)
+    {
+        try
+        {
+            var scriptDir = Path.GetDirectoryName(scriptPath) ?? "";
+            var content = System.IO.File.ReadAllText(scriptPath);
+
+            // Match patterns like:  "...something.exe"  or  ...something.exe followed by space/quote/EOL
+            var matches = System.Text.RegularExpressions.Regex.Matches(
+                content,
+                @"[""']?([^""'\r\n]*?\.exe)\b",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            foreach (System.Text.RegularExpressions.Match m in matches)
+            {
+                var raw = m.Groups[1].Value.Trim();
+
+                // Expand %~dp0 → script's own directory
+                raw = System.Text.RegularExpressions.Regex.Replace(
+                    raw, @"%~dp0\\?", scriptDir + "\\",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                // Expand %dp0% → script's own directory (SET dp0=%~dp0 pattern)
+                raw = System.Text.RegularExpressions.Regex.Replace(
+                    raw, @"%dp0%\\?", scriptDir + "\\",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                // Try as full path first
+                if (Path.IsPathFullyQualified(raw) && System.IO.File.Exists(raw))
+                    return IsConsoleSubsystem(raw) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
+
+                // Try resolving bare exe name (e.g. "node") from PATH
+                var name = Path.GetFileNameWithoutExtension(raw);
+                var resolved = ResolveFromPath(name);
+                if (resolved != null)
+                    return IsConsoleSubsystem(resolved) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
+            }
+        }
+        catch
+        {
+            // If we can't read/parse, fall through
+        }
+
+        // Default: assume GUI (suppress console flash)
+        return QuickLaunchType.GuiApp;
+    }
+
+    private static QuickLaunchType DetectLaunchType(string path)
+    {
+        // URL: http(s)://...
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == "http" || uri.Scheme == "https"))
+            return QuickLaunchType.Url;
+
+        // Full-path targets
+        if (Path.IsPathFullyQualified(path))
+        {
+            if (Directory.Exists(path))
+                return QuickLaunchType.Folder;
+
+            if (System.IO.File.Exists(path))
+            {
+                var ext = Path.GetExtension(path).ToLowerInvariant();
+                if (ext is ".exe" or ".com")
+                    return IsConsoleSubsystem(path) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
+                if (ext is ".cmd" or ".bat")
+                    return ClassifyScript(path);
+                return QuickLaunchType.File;
+            }
+
+            return QuickLaunchType.GuiApp;
+        }
+
+        // Bare name (e.g. "code", "cmd") — resolve via PATH to determine type
+        var resolved = ResolveFromPath(path);
+        if (resolved != null)
+        {
+            var ext = Path.GetExtension(resolved).ToLowerInvariant();
+            if (ext is ".cmd" or ".bat")
+                return ClassifyScript(resolved);
+            return IsConsoleSubsystem(resolved) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
+        }
+
+        return QuickLaunchType.GuiApp;
+    }
+
+    private static ProcessStartInfo BuildStartInfo(QuickLaunchApp app, QuickLaunchType type)
+    {
+        switch (type)
+        {
+            case QuickLaunchType.Url:
+                return new ProcessStartInfo
+                {
+                    FileName = app.Path,
+                    UseShellExecute = true
+                };
+
+            case QuickLaunchType.Folder:
+                return new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = string.IsNullOrEmpty(app.Arguments)
+                        ? $"\"{app.Path}\""
+                        : $"{app.Arguments} \"{app.Path}\"",
+                    UseShellExecute = true
+                };
+
+            case QuickLaunchType.File:
+                return new ProcessStartInfo
+                {
+                    FileName = app.Path,
+                    UseShellExecute = true
+                };
+
+            case QuickLaunchType.ConsoleApp:
+                // CUI app — UseShellExecute so the OS allocates a console window
+                return new ProcessStartInfo
+                {
+                    FileName = app.Path,
+                    Arguments = app.Arguments,
+                    UseShellExecute = true
+                };
+
+            case QuickLaunchType.GuiApp:
+            default:
+                // GUI app — launch via cmd /c + CreateNoWindow to suppress console flash
+                // for .cmd/.bat wrappers (e.g. code), and direct launch for .exe
+                var resolved = ResolveFromPath(app.Path);
+                var ext = resolved != null
+                    ? Path.GetExtension(resolved).ToLowerInvariant()
+                    : Path.GetExtension(app.Path).ToLowerInvariant();
+
+                if (ext is ".cmd" or ".bat")
+                {
+                    var args = string.IsNullOrEmpty(app.Arguments)
+                        ? $"/c \"{app.Path}\""
+                        : $"/c \"{app.Path}\" {app.Arguments}";
+                    return new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = args,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                }
+
+                return new ProcessStartInfo
+                {
+                    FileName = app.Path,
+                    Arguments = app.Arguments,
+                    UseShellExecute = true
+                };
+        }
+    }
+
     [RelayCommand]
     private async Task LaunchQuickApp(QuickLaunchApp? app)
     {
@@ -169,33 +382,8 @@ public partial class WindowPickerViewModel : ObservableObject
             var existingHandles = new HashSet<IntPtr>(
                 _windowManager.EnumerateWindows().Select(w => w.Handle));
 
-            var isFullPath = Path.IsPathFullyQualified(app.Path);
-            ProcessStartInfo startInfo;
-
-            if (isFullPath)
-            {
-                startInfo = new ProcessStartInfo
-                {
-                    FileName = app.Path,
-                    Arguments = app.Arguments,
-                    UseShellExecute = true
-                };
-            }
-            else
-            {
-                // PATH-based command (e.g. "code", "wt") — run via cmd /c to resolve PATH
-                // without showing a console window
-                var args = string.IsNullOrEmpty(app.Arguments)
-                    ? $"/c \"{app.Path}\""
-                    : $"/c \"{app.Path}\" {app.Arguments}";
-                startInfo = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = args,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-            }
+            var type = DetectLaunchType(app.Path);
+            var startInfo = BuildStartInfo(app, type);
 
             Process.Start(startInfo);
 
