@@ -12,6 +12,7 @@ public class TabManager
     private readonly SettingsManager _settingsManager;
     private readonly Dictionary<Guid, WindowHost> _windowHosts = new();
     private readonly Dispatcher _dispatcher;
+    private readonly DispatcherTimer _cleanupTimer;
 
     public ObservableCollection<TabItem> Tabs { get; } = new();
     public ObservableCollection<TabGroup> Groups { get; } = new();
@@ -63,6 +64,14 @@ public class TabManager
         _windowManager = windowManager;
         _settingsManager = settingsManager;
         _dispatcher = Dispatcher.CurrentDispatcher;
+
+        // フォールバック: 定期的に無効なタブを検出・除去する
+        _cleanupTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+        {
+            Interval = TimeSpan.FromSeconds(3)
+        };
+        _cleanupTimer.Tick += (_, _) => CleanupInvalidTabs();
+        _cleanupTimer.Start();
     }
 
     public TabItem? AddTab(WindowInfo windowInfo, bool activate = true)
@@ -338,8 +347,14 @@ public class TabManager
 
         foreach (var tab in invalidTabs)
         {
-            RemoveTab(tab);
+            // ウィンドウは既に無効なので ReleaseWindow せずに追跡だけ解除する
+            OnHostedWindowClosed(tab);
         }
+    }
+
+    public void StopCleanupTimer()
+    {
+        _cleanupTimer.Stop();
     }
 
     public void CloseStartupTabs()

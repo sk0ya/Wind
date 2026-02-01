@@ -68,6 +68,7 @@ public class WindowHost : HwndHost
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
+    private const uint EVENT_OBJECT_DESTROY = 0x8001;
     private const uint EVENT_SYSTEM_MOVESIZESTART = 0x000A;
     private const uint EVENT_SYSTEM_MOVESIZEEND = 0x000B;
     private const uint EVENT_SYSTEM_MINIMIZESTART = 0x0016;
@@ -78,6 +79,7 @@ public class WindowHost : HwndHost
     private IntPtr _winEventHookMoveSize;
     private IntPtr _winEventHookMinimize;
     private IntPtr _winEventHookLocation;
+    private IntPtr _winEventHookDestroy;
     private WinEventDelegate? _winEventProc;
     private bool _wasMaximized;
 
@@ -260,6 +262,11 @@ public class WindowHost : HwndHost
         _winEventHookLocation = SetWinEventHook(
             EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE,
             IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
+
+        // Hook for window destruction (WS_POPUP ウィンドウは WM_PARENTNOTIFY が送信されないため必要)
+        _winEventHookDestroy = SetWinEventHook(
+            EVENT_OBJECT_DESTROY, EVENT_OBJECT_DESTROY,
+            IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
     }
 
     private void RemoveWinEventHook()
@@ -279,6 +286,11 @@ public class WindowHost : HwndHost
             UnhookWinEvent(_winEventHookLocation);
             _winEventHookLocation = IntPtr.Zero;
         }
+        if (_winEventHookDestroy != IntPtr.Zero)
+        {
+            UnhookWinEvent(_winEventHookDestroy);
+            _winEventHookDestroy = IntPtr.Zero;
+        }
         _winEventProc = null;
     }
 
@@ -287,6 +299,20 @@ public class WindowHost : HwndHost
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
     {
         if (hwnd != _hostedWindowHandle) return;
+
+        if (eventType == EVENT_OBJECT_DESTROY && idObject == OBJID_WINDOW)
+        {
+            // ホストされたウィンドウが破棄された
+            // WS_POPUP ウィンドウでは WM_PARENTNOTIFY が送信されないため、ここで検出する
+            if (!_isHostedWindowClosed)
+            {
+                _isHostedWindowClosed = true;
+                RemoveWinEventHook();
+                _hostedWindowHandle = IntPtr.Zero;
+                HostedWindowClosed?.Invoke(this, EventArgs.Empty);
+            }
+            return;
+        }
 
         if (eventType == EVENT_SYSTEM_MOVESIZESTART)
         {

@@ -301,6 +301,7 @@ public partial class MainViewModel : ObservableObject
     {
         // Stop the window picker timer first to prevent UI updates during cleanup
         _windowPickerViewModel.Stop();
+        _tabManager.StopCleanupTimer();
 
         _tabManager.ActiveTabChanged -= OnActiveTabChanged;
         _tabManager.TileLayoutChanged -= OnTileLayoutChanged;
