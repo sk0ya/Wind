@@ -74,8 +74,26 @@ public partial class MainWindow : Window
             double dpiScaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
             double dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
 
-            Left += dx / dpiScaleX;
-            Top += dy / dpiScaleY;
+            if (WindowState == WindowState.Maximized)
+            {
+                // Get current cursor position in screen coordinates
+                NativeMethods.GetCursorPos(out var cursorPos);
+
+                // Calculate relative X position within the maximized window
+                var relativeX = (cursorPos.X - Left * dpiScaleX) / (ActualWidth * dpiScaleX);
+
+                // Restore window
+                WindowState = WindowState.Normal;
+
+                // Position window so cursor stays at the same relative position
+                Left = cursorPos.X / dpiScaleX - (Width * relativeX);
+                Top = cursorPos.Y / dpiScaleY - 18; // Half of title bar height
+            }
+            else
+            {
+                Left += dx / dpiScaleX;
+                Top += dy / dpiScaleY;
+            }
         };
         _tabManager.CloseWindRequested += (s, e) => { Close(); };
 
