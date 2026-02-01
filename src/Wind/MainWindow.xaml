@@ -22,6 +22,10 @@
         <converters:NullToVisibilityConverter x:Key="NullToVisibility"/>
         <converters:ColorToBrushConverter x:Key="ColorToBrush"/>
 
+        <!-- Tab accent border thickness (updated by code-behind based on tab position) -->
+        <Thickness x:Key="HorizontalTabAccentThickness">0,0,0,2</Thickness>
+        <Thickness x:Key="VerticalTabAccentThickness">2,0,0,0</Thickness>
+
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="46"/>
             <Setter Property="Height" Value="36"/>
@@ -64,7 +68,7 @@
         <Style x:Key="TabItemStyle" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource HorizontalTabAccentThickness}"/>
             <Setter Property="Padding" Value="12,0"/>
             <Setter Property="Margin" Value="1,0"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -86,11 +90,11 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Tab Item Style (vertical mode - left accent) -->
+        <!-- Tab Item Style (vertical mode - accent side set via DynamicResource) -->
         <Style x:Key="TabItemVerticalStyle" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource VerticalTabAccentThickness}"/>
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="Margin" Value="0,1"/>
             <Setter Property="Cursor" Value="Hand"/>

@@ -177,6 +177,11 @@ public partial class MainWindow : Window
             AddWindowButton.Width = double.NaN;
             AddWindowButton.Height = 36;
             AddWindowButton.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+            // Set accent bar side: Left position → right accent, Right position → left accent
+            Resources["VerticalTabAccentThickness"] = position == "Left"
+                ? new Thickness(0, 0, 2, 0)
+                : new Thickness(2, 0, 0, 0);
         }
         else
         {
@@ -188,6 +193,11 @@ public partial class MainWindow : Window
             WindowControlsPanel.Orientation = Orientation.Horizontal;
             AddWindowButton.Width = 36;
             AddWindowButton.Height = 36;
+
+            // Set accent bar side: Bottom position → top accent, Top position → bottom accent
+            Resources["HorizontalTabAccentThickness"] = position == "Bottom"
+                ? new Thickness(0, 2, 0, 0)
+                : new Thickness(0, 0, 0, 2);
         }
 
         // Set button sizes for vertical/horizontal mode
