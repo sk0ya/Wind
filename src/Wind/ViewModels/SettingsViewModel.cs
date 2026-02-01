@@ -64,6 +64,9 @@ public partial class SettingsViewModel : ObservableObject
     private QuickLaunchApp? _selectedQuickLaunchApp;
 
     [ObservableProperty]
+    private string _selectedQuickLaunchAppName = string.Empty;
+
+    [ObservableProperty]
     private string _selectedQuickLaunchAppArguments = string.Empty;
 
     [ObservableProperty]
@@ -292,12 +295,22 @@ public partial class SettingsViewModel : ObservableObject
 
     partial void OnSelectedQuickLaunchAppChanged(QuickLaunchApp? value)
     {
+        SelectedQuickLaunchAppName = value?.Name ?? string.Empty;
         SelectedQuickLaunchAppArguments = value?.Arguments ?? string.Empty;
+    }
+
+    partial void OnSelectedQuickLaunchAppNameChanged(string value)
+    {
+        if (SelectedQuickLaunchApp is not null && SelectedQuickLaunchApp.Name != value)
+        {
+            SelectedQuickLaunchApp.Name = value;
+            _settingsManager.SaveQuickLaunchApp();
+        }
     }
 
     partial void OnSelectedQuickLaunchAppArgumentsChanged(string value)
     {
-        if (SelectedQuickLaunchApp != null && SelectedQuickLaunchApp.Arguments != value)
+        if (SelectedQuickLaunchApp is not null && SelectedQuickLaunchApp.Arguments != value)
         {
             SelectedQuickLaunchApp.Arguments = value;
             _settingsManager.SaveQuickLaunchApp();
@@ -396,6 +409,8 @@ public partial class SettingsViewModel : ObservableObject
         var input = NewQuickLaunchPath.Trim();
         ParsePathAndArguments(input, out var path, out var arguments);
         var name = Path.GetFileNameWithoutExtension(path);
+        if (string.IsNullOrEmpty(name))
+            name = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
 
         var app = _settingsManager.AddQuickLaunchApp(path, arguments, name);
         QuickLaunchApps.Add(app);

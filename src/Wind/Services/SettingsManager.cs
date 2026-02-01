@@ -175,6 +175,8 @@ public class SettingsManager
         if (string.IsNullOrWhiteSpace(path)) return null!;
 
         var appName = name ?? Path.GetFileNameWithoutExtension(path);
+        if (string.IsNullOrEmpty(appName))
+            appName = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
 
         var app = new QuickLaunchApp
         {
