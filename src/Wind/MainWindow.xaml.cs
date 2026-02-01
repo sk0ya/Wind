@@ -720,6 +720,8 @@ public partial class MainWindow : Window
                 _tabManager.ClearMultiSelection();
                 _viewModel.SelectTabCommand.Execute(tab);
             }
+
+            e.Handled = true;
         }
     }
 
