@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -50,7 +49,7 @@ public partial class MainWindow : Window
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         // Wire up window picker events
-        var pickerVm = (WindowPickerViewModel)WindowPickerControl.DataContext;
+        var pickerVm = (WindowPickerViewModel) WindowPickerControl.DataContext;
         pickerVm.WindowSelected += (s, window) =>
         {
             _viewModel.AddWindowCommand.Execute(window);
@@ -63,10 +62,7 @@ public partial class MainWindow : Window
         };
 
         // Wire up hosted window control events
-        _tabManager.MinimizeRequested += (s, e) =>
-        {
-            WindowState = WindowState.Minimized;
-        };
+        _tabManager.MinimizeRequested += (s, e) => { WindowState = WindowState.Minimized; };
         _tabManager.MaximizeRequested += (s, e) =>
         {
             WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
@@ -81,10 +77,7 @@ public partial class MainWindow : Window
             Left += dx / dpiScaleX;
             Top += dy / dpiScaleY;
         };
-        _tabManager.CloseWindRequested += (s, e) =>
-        {
-            Close();
-        };
+        _tabManager.CloseWindRequested += (s, e) => { Close(); };
 
         _tabManager.TileLayoutUpdated += (s, e) =>
         {
@@ -124,7 +117,11 @@ public partial class MainWindow : Window
         TabBarArea.ColumnDefinitions.Clear();
 
         // Reset Grid attached properties for all major elements to defaults
-        UIElement[] elements = [DragBar, TabBarArea, TabBarSeparator, ContentPanel, WindowPickerOverlay, TabScrollViewer, WindowControlsPanel];
+        UIElement[] elements =
+        [
+            TabBarArea, TabBarSeparator, ContentPanel, WindowPickerOverlay, TabScrollViewer,
+            WindowControlsPanel
+        ];
         foreach (var el in elements)
         {
             Grid.SetRow(el, 0);
@@ -146,7 +143,6 @@ public partial class MainWindow : Window
         WindowControlsPanel.ClearValue(VerticalAlignmentProperty);
 
         // Reset DragBar and Separator
-        DragBar.Visibility = Visibility.Collapsed;
         TabBarSeparator.Visibility = Visibility.Collapsed;
         TabBarSeparator.ClearValue(WidthProperty);
         TabBarSeparator.ClearValue(HeightProperty);
@@ -172,8 +168,8 @@ public partial class MainWindow : Window
 
         if (isVertical)
         {
-            TabItemsControl.ItemsPanel = (ItemsPanelTemplate)FindResource("VerticalTabPanel");
-            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("VerticalTabItemTemplate");
+            TabItemsControl.ItemsPanel = (ItemsPanelTemplate) FindResource("VerticalTabPanel");
+            TabItemsControl.ItemTemplate = (DataTemplate) FindResource("VerticalTabItemTemplate");
             TabsPanel.Orientation = Orientation.Vertical;
             TabScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
             TabScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
@@ -184,8 +180,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            TabItemsControl.ItemsPanel = (ItemsPanelTemplate)FindResource("HorizontalTabPanel");
-            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("HorizontalTabItemTemplate");
+            TabItemsControl.ItemsPanel = (ItemsPanelTemplate) FindResource("HorizontalTabPanel");
+            TabItemsControl.ItemTemplate = (DataTemplate) FindResource("HorizontalTabItemTemplate");
             TabsPanel.Orientation = Orientation.Horizontal;
             TabScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
             TabScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
@@ -244,14 +240,8 @@ public partial class MainWindow : Window
     private void ApplyTopLayout()
     {
         // Grid: 2 rows (36px, *)
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-        // DragBar hidden
-        DragBar.Visibility = Visibility.Collapsed;
-        Grid.SetRow(DragBar, 0);
-        Grid.SetColumn(DragBar, 0);
-        Grid.SetColumnSpan(DragBar, 1);
+        RootGrid.RowDefinitions.Add(new RowDefinition {Height = new GridLength(36)});
+        RootGrid.RowDefinitions.Add(new RowDefinition {Height = new GridLength(1, GridUnitType.Star)});
 
         // TabBarArea: Row 0
         Grid.SetRow(TabBarArea, 0);
@@ -259,8 +249,8 @@ public partial class MainWindow : Window
         Grid.SetColumnSpan(TabBarArea, 1);
 
         // TabBarArea internal: 2 columns [ScrollViewer | Controls]
-        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)});
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition {Width = GridLength.Auto});
         Grid.SetRow(TabScrollViewer, 0);
         Grid.SetColumn(TabScrollViewer, 0);
         Grid.SetRow(WindowControlsPanel, 0);
@@ -274,23 +264,14 @@ public partial class MainWindow : Window
         // Overlay spans all rows
         Grid.SetRowSpan(WindowPickerOverlay, 2);
         Grid.SetColumnSpan(WindowPickerOverlay, 1);
-
-        // CaptionHeight
-        Chrome.CaptionHeight = 36;
     }
 
     private void ApplyBottomLayout()
     {
         // Grid: 3 rows (6px drag, *, 36px tabs)
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
-
-        // DragBar: Row 0
-        DragBar.Visibility = Visibility.Visible;
-        Grid.SetRow(DragBar, 0);
-        Grid.SetColumn(DragBar, 0);
-        Grid.SetColumnSpan(DragBar, 1);
+        RootGrid.RowDefinitions.Add(new RowDefinition {Height = new GridLength(0)});
+        RootGrid.RowDefinitions.Add(new RowDefinition {Height = new GridLength(1, GridUnitType.Star)});
+        RootGrid.RowDefinitions.Add(new RowDefinition {Height = new GridLength(36)});
 
         // ContentPanel: Row 1
         Grid.SetRow(ContentPanel, 1);
@@ -303,8 +284,8 @@ public partial class MainWindow : Window
         Grid.SetColumnSpan(TabBarArea, 1);
 
         // TabBarArea internal: 2 columns [ScrollViewer | Controls]
-        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)});
+        TabBarArea.ColumnDefinitions.Add(new ColumnDefinition {Width = GridLength.Auto});
         Grid.SetRow(TabScrollViewer, 0);
         Grid.SetColumn(TabScrollViewer, 0);
         Grid.SetRow(WindowControlsPanel, 0);
@@ -313,21 +294,15 @@ public partial class MainWindow : Window
         // Overlay spans all rows
         Grid.SetRowSpan(WindowPickerOverlay, 3);
         Grid.SetColumnSpan(WindowPickerOverlay, 1);
-
-        // CaptionHeight for thin drag bar
-        Chrome.CaptionHeight = 6;
     }
 
     private void ApplyLeftLayout()
     {
         // Grid: 1 row, 3 columns (Auto tabbar, 1px separator, * content)
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        // DragBar hidden — drag is handled by the tab bar area
-        DragBar.Visibility = Visibility.Collapsed;
+        RootGrid.RowDefinitions.Add(new RowDefinition {Height = new GridLength(1, GridUnitType.Star)});
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition {Width = GridLength.Auto});
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(1)});
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)});
 
         // TabBarArea: Row 0, Column 0 (vertical)
         Grid.SetRow(TabBarArea, 0);
@@ -342,8 +317,8 @@ public partial class MainWindow : Window
         Grid.SetColumn(TabBarSeparator, 1);
 
         // TabBarArea internal: 2 rows [ButtonsPanel | ScrollViewer]
-        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        TabBarArea.RowDefinitions.Add(new RowDefinition {Height = GridLength.Auto});
+        TabBarArea.RowDefinitions.Add(new RowDefinition {Height = new GridLength(1, GridUnitType.Star)});
         Grid.SetRow(WindowControlsPanel, 0);
         Grid.SetColumn(WindowControlsPanel, 0);
         WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -357,20 +332,15 @@ public partial class MainWindow : Window
         // Overlay spans everything
         Grid.SetRowSpan(WindowPickerOverlay, 1);
         Grid.SetColumnSpan(WindowPickerOverlay, 3);
-
-        Chrome.CaptionHeight = 0;
     }
 
     private void ApplyRightLayout()
     {
         // Grid: 1 row, 3 columns (* content, 1px separator, Auto tabbar)
-        RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        // DragBar hidden — drag is handled by the tab bar area
-        DragBar.Visibility = Visibility.Collapsed;
+        RootGrid.RowDefinitions.Add(new RowDefinition {Height = new GridLength(1, GridUnitType.Star)});
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)});
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(1)});
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition {Width = GridLength.Auto});
 
         // ContentPanel: Row 0, Column 0
         Grid.SetRow(ContentPanel, 0);
@@ -389,8 +359,8 @@ public partial class MainWindow : Window
         TabBarArea.MaxWidth = 300;
 
         // TabBarArea internal: 2 rows [ButtonsPanel | ScrollViewer]
-        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        TabBarArea.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        TabBarArea.RowDefinitions.Add(new RowDefinition {Height = GridLength.Auto});
+        TabBarArea.RowDefinitions.Add(new RowDefinition {Height = new GridLength(1, GridUnitType.Star)});
         Grid.SetRow(WindowControlsPanel, 0);
         Grid.SetColumn(WindowControlsPanel, 0);
         WindowControlsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -400,8 +370,6 @@ public partial class MainWindow : Window
         // Overlay spans everything
         Grid.SetRowSpan(WindowPickerOverlay, 1);
         Grid.SetColumnSpan(WindowPickerOverlay, 3);
-
-        Chrome.CaptionHeight = 0;
     }
 
     private void ToggleTabBarCollapsed()
@@ -414,7 +382,7 @@ public partial class MainWindow : Window
         if (_isTabBarCollapsed)
         {
             // Collapse: icon-only mode
-            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("CollapsedVerticalTabItemTemplate");
+            TabItemsControl.ItemTemplate = (DataTemplate) FindResource("CollapsedVerticalTabItemTemplate");
             TabBarArea.MinWidth = 0;
             TabBarArea.MaxWidth = double.PositiveInfinity;
             TabBarArea.Width = 40;
@@ -433,7 +401,7 @@ public partial class MainWindow : Window
         else
         {
             // Expand: restore full vertical mode
-            TabItemsControl.ItemTemplate = (DataTemplate)FindResource("VerticalTabItemTemplate");
+            TabItemsControl.ItemTemplate = (DataTemplate) FindResource("VerticalTabItemTemplate");
             TabBarArea.ClearValue(WidthProperty);
             TabBarArea.MinWidth = 180;
             TabBarArea.MaxWidth = 300;
@@ -551,37 +519,37 @@ public partial class MainWindow : Window
 
         // Get ContentPanel position relative to the main window
         var contentPos = ContentPanel.TranslatePoint(new Point(0, 0), this);
-        int grip = (int)(GripSize * dpiScaleX);
-        int parentWidth = (int)(ActualWidth * dpiScaleX);
-        int parentHeight = (int)(ActualHeight * dpiScaleY);
+        int grip = (int) (GripSize * dpiScaleX);
+        int parentWidth = (int) (ActualWidth * dpiScaleX);
+        int parentHeight = (int) (ActualHeight * dpiScaleY);
 
         switch (_currentTabPosition)
         {
             case "Left":
             {
                 // Vertical blocker at the left edge of content (adjacent to tab bar)
-                int x = (int)(contentPos.X * dpiScaleX);
+                int x = (int) (contentPos.X * dpiScaleX);
                 _resizeHelper.SetBlocker(x, 0, grip, parentHeight);
                 break;
             }
             case "Right":
             {
                 // Vertical blocker at the right edge of content (adjacent to tab bar)
-                int x = (int)((contentPos.X + ContentPanel.ActualWidth) * dpiScaleX) - grip;
+                int x = (int) ((contentPos.X + ContentPanel.ActualWidth) * dpiScaleX) - grip;
                 _resizeHelper.SetBlocker(x, 0, grip, parentHeight);
                 break;
             }
             case "Top":
             {
                 // Horizontal blocker at the top edge of content (adjacent to tab bar)
-                int y = (int)(contentPos.Y * dpiScaleY);
+                int y = (int) (contentPos.Y * dpiScaleY);
                 _resizeHelper.SetBlocker(0, y, parentWidth, grip);
                 break;
             }
             case "Bottom":
             {
                 // Horizontal blocker at the bottom edge of content (adjacent to tab bar)
-                int y = (int)((contentPos.Y + ContentPanel.ActualHeight) * dpiScaleY) - grip;
+                int y = (int) ((contentPos.Y + ContentPanel.ActualHeight) * dpiScaleY) - grip;
                 _resizeHelper.SetBlocker(0, y, parentWidth, grip);
                 break;
             }
@@ -649,13 +617,13 @@ public partial class MainWindow : Window
         // Vertical tabs (Left/Right): default vertical scroll works
     }
 
-    private void TabArea_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void TabArea_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         // Allow drag from empty areas in the tab bar (not on buttons or tabs)
-        if (e.OriginalSource is System.Windows.Controls.ScrollViewer ||
-            e.OriginalSource is System.Windows.Controls.ScrollContentPresenter ||
-            e.OriginalSource is System.Windows.Controls.Grid ||
-            e.OriginalSource is System.Windows.Controls.StackPanel)
+        if (e.OriginalSource is ScrollViewer ||
+            e.OriginalSource is ScrollContentPresenter ||
+            e.OriginalSource is Grid ||
+            e.OriginalSource is StackPanel)
         {
             if (e.ClickCount == 2)
             {
@@ -670,14 +638,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private void StartDragTracking(System.Windows.Input.MouseButtonEventArgs e)
+    private void StartDragTracking(MouseButtonEventArgs e)
     {
         _dragStartPoint = e.GetPosition(this);
         _isDragging = false;
         CaptureMouse();
     }
 
-    protected override void OnPreviewMouseMove(System.Windows.Input.MouseEventArgs e)
+    protected override void OnPreviewMouseMove(MouseEventArgs e)
     {
         base.OnPreviewMouseMove(e);
 
@@ -714,7 +682,7 @@ public partial class MainWindow : Window
         }
     }
 
-    protected override void OnPreviewMouseLeftButtonUp(System.Windows.Input.MouseButtonEventArgs e)
+    protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnPreviewMouseLeftButtonUp(e);
 
@@ -731,8 +699,9 @@ public partial class MainWindow : Window
         _viewModel.OpenSettingsCommand.Execute(null);
     }
 
-    private void TabItem_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void TabItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (e == null) throw new ArgumentNullException(nameof(e));
         if (sender is FrameworkElement element && element.Tag is Models.TabItem tab)
         {
             if (e.ClickCount == 2 && _currentTabPosition is "Left" or "Right")
@@ -754,7 +723,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void TabItem_MouseRightButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void TabItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement element && element.Tag is Models.TabItem tab)
         {
@@ -784,6 +753,7 @@ public partial class MainWindow : Window
         {
             _viewModel.CloseTabCommand.Execute(tab);
         }
+
         e.Handled = true;
     }
 
@@ -814,6 +784,7 @@ public partial class MainWindow : Window
         {
             _currentHost.Visibility = Visibility.Visible;
         }
+
         if (WindowState != WindowState.Maximized)
             _resizeHelper?.SetVisible(true);
     }
@@ -845,6 +816,7 @@ public partial class MainWindow : Window
                         WindowHostContent.Content = null;
                         _currentHost = null;
                     }
+
                     TileContainer.Visibility = Visibility.Collapsed;
                     ShowContentTab(_viewModel.ActiveContentKey);
                 }
@@ -899,8 +871,8 @@ public partial class MainWindow : Window
                         {
                             if (host.Parent is ContentControl cc && cc.Parent is Border b)
                             {
-                                var w = (int)b.ActualWidth;
-                                var h = (int)b.ActualHeight;
+                                var w = (int) b.ActualWidth;
+                                var h = (int) b.ActualHeight;
                                 if (w > 0 && h > 0)
                                     host.ResizeHostedWindow(w, h);
                             }
@@ -924,10 +896,7 @@ public partial class MainWindow : Window
             if (!_viewModel.IsTiled)
             {
                 // Tile layout fully destroyed — clean up hosts
-                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
-                {
-                    ClearTileLayout();
-                });
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { ClearTileLayout(); });
             }
         }
     }
@@ -964,8 +933,8 @@ public partial class MainWindow : Window
     {
         if (_currentHost == null) return;
 
-        var width = (int)WindowHostContainer.ActualWidth;
-        var height = (int)WindowHostContainer.ActualHeight;
+        var width = (int) WindowHostContainer.ActualWidth;
+        var height = (int) WindowHostContainer.ActualHeight;
 
         width = Math.Max(0, width);
         height = Math.Max(0, height);
@@ -980,7 +949,7 @@ public partial class MainWindow : Window
     {
         if (contentKey == "Settings")
         {
-            _settingsPage ??= App.GetService<Views.SettingsPage>();
+            _settingsPage ??= App.GetService<SettingsPage>();
             ContentTabContent.Content = _settingsPage;
             ContentTabContainer.Visibility = Visibility.Visible;
         }
@@ -1004,21 +973,21 @@ public partial class MainWindow : Window
 
         for (int r = 0; r < rows; r++)
         {
-            TileContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            TileContainer.RowDefinitions.Add(new RowDefinition {Height = new GridLength(1, GridUnitType.Star)});
             // Add row splitter (except after last row)
             if (r < rows - 1)
             {
-                TileContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(4) });
+                TileContainer.RowDefinitions.Add(new RowDefinition {Height = new GridLength(4)});
             }
         }
 
         for (int c = 0; c < cols; c++)
         {
-            TileContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            TileContainer.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)});
             // Add column splitter (except after last column)
             if (c < cols - 1)
             {
-                TileContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+                TileContainer.ColumnDefinitions.Add(new ColumnDefinition {Width = new GridLength(4)});
             }
         }
 
@@ -1065,8 +1034,8 @@ public partial class MainWindow : Window
             // Listen for size changes to resize hosted windows
             container.SizeChanged += (s, e) =>
             {
-                var w = (int)e.NewSize.Width;
-                var h = (int)e.NewSize.Height;
+                var w = (int) e.NewSize.Width;
+                var h = (int) e.NewSize.Height;
                 if (w > 0 && h > 0)
                 {
                     host.ResizeHostedWindow(w, h);
@@ -1117,8 +1086,8 @@ public partial class MainWindow : Window
             {
                 if (host.Parent is ContentControl cc && cc.Parent is Border b)
                 {
-                    var w = (int)b.ActualWidth;
-                    var h = (int)b.ActualHeight;
+                    var w = (int) b.ActualWidth;
+                    var h = (int) b.ActualHeight;
                     if (w > 0 && h > 0)
                         host.ResizeHostedWindow(w, h);
                 }
@@ -1143,25 +1112,29 @@ public partial class MainWindow : Window
         _tiledHosts.Clear();
     }
 
-    private static void GetGridLayout(int count, out int cols, out int rows, out List<(int row, int col, int rowSpan, int colSpan)> assignments)
+    private static void GetGridLayout(int count, out int cols, out int rows,
+        out List<(int row, int col, int rowSpan, int colSpan)> assignments)
     {
         assignments = new List<(int, int, int, int)>();
 
         switch (count)
         {
             case 2:
-                cols = 2; rows = 1;
+                cols = 2;
+                rows = 1;
                 assignments.Add((0, 0, 1, 1));
                 assignments.Add((0, 1, 1, 1));
                 break;
             case 3:
-                cols = 2; rows = 2;
+                cols = 2;
+                rows = 2;
                 assignments.Add((0, 0, 2, 1)); // left, spans 2 rows
                 assignments.Add((0, 1, 1, 1)); // right top
                 assignments.Add((1, 1, 1, 1)); // right bottom
                 break;
             case 4:
-                cols = 2; rows = 2;
+                cols = 2;
+                rows = 2;
                 assignments.Add((0, 0, 1, 1));
                 assignments.Add((0, 1, 1, 1));
                 assignments.Add((1, 0, 1, 1));
@@ -1169,8 +1142,8 @@ public partial class MainWindow : Window
                 break;
             default:
                 // For 5+, use a roughly square grid
-                cols = (int)Math.Ceiling(Math.Sqrt(count));
-                rows = (int)Math.Ceiling((double)count / cols);
+                cols = (int) Math.Ceiling(Math.Sqrt(count));
+                rows = (int) Math.Ceiling((double) count / cols);
                 int idx = 0;
                 for (int r = 0; r < rows && idx < count; r++)
                 {
@@ -1180,6 +1153,7 @@ public partial class MainWindow : Window
                         idx++;
                     }
                 }
+
                 // If last row is not full, let the last item span remaining columns
                 if (count % cols != 0)
                 {
@@ -1187,6 +1161,7 @@ public partial class MainWindow : Window
                     int remaining = cols - (count % cols);
                     assignments[assignments.Count - 1] = (last.row, last.col, 1, 1 + remaining);
                 }
+
                 break;
         }
     }
@@ -1202,6 +1177,13 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    [DllImport("user32.dll")]
+    static extern IntPtr DefWindowProc(
+        IntPtr hWnd,
+        int msg,
+        IntPtr wParam,
+        IntPtr lParam);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT

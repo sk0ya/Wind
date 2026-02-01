@@ -13,14 +13,14 @@
         Icon="pack://application:,,,/Assets/Wind.ico"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
+        ResizeMode="NoResize"
+        Background="Transparent"
         AllowsTransparency="False"
-        Background="{DynamicResource ApplicationBackgroundBrush}"
         StateChanged="Window_StateChanged">
-
     <WindowChrome.WindowChrome>
         <WindowChrome x:Name="Chrome"
-                      CaptionHeight="36"
-                      ResizeBorderThickness="4"
+                      CaptionHeight="0"
+                      ResizeBorderThickness="0"
                       GlassFrameThickness="0"
                       CornerRadius="0"
                       UseAeroCaptionButtons="False"/>
@@ -37,7 +37,6 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
-            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -136,7 +135,6 @@
                     Height="36"
                     MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
-                    WindowChrome.IsHitTestVisibleInChrome="True"
                     Tag="{Binding}">
                 <Border.ContextMenu>
                     <ContextMenu Tag="{Binding}">
@@ -158,7 +156,6 @@
                     <Button Background="Transparent" BorderThickness="0"
                             Padding="4" Margin="6,0,0,0"
                             Click="CloseTab_Click" Tag="{Binding}"
-                            WindowChrome.IsHitTestVisibleInChrome="True"
                             Width="20" Height="20" Cursor="Hand"
                             Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                         <Button.Style>
@@ -189,7 +186,6 @@
             <Border Style="{StaticResource TabItemVerticalStyle}"
                     MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
-                    WindowChrome.IsHitTestVisibleInChrome="True"
                     Tag="{Binding}">
                 <Border.ContextMenu>
                     <ContextMenu Tag="{Binding}">
@@ -216,7 +212,6 @@
                     <Button Grid.Column="2" Background="Transparent" BorderThickness="0"
                             Padding="4" Margin="6,0,0,0"
                             Click="CloseTab_Click" Tag="{Binding}"
-                            WindowChrome.IsHitTestVisibleInChrome="True"
                             Width="20" Height="20" Cursor="Hand"
                             Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                         <Button.Style>
@@ -247,7 +242,6 @@
             <Border Style="{StaticResource TabItemVerticalStyle}"
                     MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
-                    WindowChrome.IsHitTestVisibleInChrome="True"
                     Tag="{Binding}"
                     HorizontalAlignment="Center"
                     Padding="8,6">
@@ -267,24 +261,21 @@
 
     </Window.Resources>
 
-    <Border x:Name="MainBorder" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0">
+    <Border x:Name="MainBorder" BorderThickness="0">
         <Grid x:Name="RootGrid">
             <!-- Row/Column definitions set by code-behind via ApplyTabHeaderPosition -->
 
-            <!-- Drag Bar: visible when tabs are not at top, provides window drag area -->
-            <Border x:Name="DragBar" Height="6" Visibility="Collapsed"
-                    Background="{DynamicResource ApplicationBackgroundBrush}"
-                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
-
             <!-- Tab Bar Area: contains tabs, add button, and (for left/right) window controls -->
-            <Grid x:Name="TabBarArea" Background="{DynamicResource ApplicationBackgroundBrush}"
+            <Grid x:Name="TabBarArea"
+                  ClipToBounds="True"
                   MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <!-- Internal row/column definitions set by code-behind -->
 
                 <ScrollViewer x:Name="TabScrollViewer"
+                              UseLayoutRounding="True"
+                              SnapsToDevicePixels="True"
                               HorizontalScrollBarVisibility="Hidden"
                               VerticalScrollBarVisibility="Disabled"
-                              WindowChrome.IsHitTestVisibleInChrome="True"
                               PreviewMouseWheel="TabScrollViewer_PreviewMouseWheel"
                               PreviewMouseLeftButtonDown="TabArea_PreviewMouseLeftButtonDown">
                     <StackPanel x:Name="TabsPanel" Orientation="Horizontal">
@@ -295,7 +286,6 @@
                         <!-- Add Window Button -->
                         <Button x:Name="AddWindowButton" Content="+"
                                 Click="AddWindowButton_Click"
-                                WindowChrome.IsHitTestVisibleInChrome="True"
                                 Width="36" Height="36"
                                 FontSize="16" FontWeight="Light"
                                 Background="Transparent" BorderThickness="0"
