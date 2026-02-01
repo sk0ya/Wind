@@ -344,6 +344,7 @@
 
                 <!-- Single Window Host Container -->
                 <Border x:Name="WindowHostContainer" ClipToBounds="True" Padding="0" Margin="0"
+                        Background="Black"
                         Visibility="{Binding SelectedTab, Converter={StaticResource NullToVisibility}}">
                     <ContentControl x:Name="WindowHostContent"
                                     HorizontalAlignment="Stretch"

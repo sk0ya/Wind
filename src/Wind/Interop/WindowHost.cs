@@ -48,6 +48,11 @@ public class WindowHost : HwndHost
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr GetStockObject(int fnObject);
+
+    private const int BLACK_BRUSH = 4;
+
     [DllImport("user32.dll")]
     private static extern IntPtr SetWinEventHook(
         uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
@@ -147,7 +152,7 @@ public class WindowHost : HwndHost
             hInstance = GetModuleHandle(null),
             hIcon = IntPtr.Zero,
             hCursor = IntPtr.Zero,
-            hbrBackground = IntPtr.Zero,
+            hbrBackground = GetStockObject(BLACK_BRUSH),
             lpszMenuName = null,
             lpszClassName = HostClassName
         };
