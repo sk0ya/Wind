@@ -31,6 +31,9 @@ public partial class MainViewModel : ObservableObject
     private bool _isWindowPickerOpen;
 
     [ObservableProperty]
+    private bool _isCommandPaletteOpen;
+
+    [ObservableProperty]
     private string _statusMessage = "Ready";
 
     [ObservableProperty]
@@ -144,7 +147,25 @@ public partial class MainViewModel : ObservableObject
                 int index = binding.Action - HotkeyAction.SwitchToTab1;
                 _tabManager.SelectTab(index);
                 break;
+            case HotkeyAction.CommandPalette:
+                if (IsCommandPaletteOpen)
+                    CloseCommandPalette();
+                else
+                    OpenCommandPalette();
+                break;
         }
+    }
+
+    [RelayCommand]
+    private void OpenCommandPalette()
+    {
+        IsCommandPaletteOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseCommandPalette()
+    {
+        IsCommandPaletteOpen = false;
     }
 
     [RelayCommand]

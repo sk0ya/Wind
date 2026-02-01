@@ -61,6 +61,16 @@ public partial class MainWindow : Window
             RestoreEmbeddedWindow();
         };
 
+        // Wire up command palette events
+        CommandPaletteControl.DataContext = App.GetService<CommandPaletteViewModel>();
+        var paletteVm = (CommandPaletteViewModel)CommandPaletteControl.DataContext;
+        paletteVm.ItemExecuted += OnCommandPaletteItemExecuted;
+        paletteVm.Cancelled += (s, e) =>
+        {
+            _viewModel.CloseCommandPaletteCommand.Execute(null);
+            RestoreEmbeddedWindow();
+        };
+
         // Wire up hosted window control events
         _tabManager.MinimizeRequested += (s, e) => { WindowState = WindowState.Minimized; };
         _tabManager.MaximizeRequested += (s, e) =>
@@ -137,8 +147,8 @@ public partial class MainWindow : Window
         // Reset Grid attached properties for all major elements to defaults
         UIElement[] elements =
         [
-            TabBarArea, TabBarSeparator, ContentPanel, WindowPickerOverlay, TabScrollViewer,
-            WindowControlsPanel
+            TabBarArea, TabBarSeparator, ContentPanel, WindowPickerOverlay, CommandPaletteOverlay,
+            TabScrollViewer, WindowControlsPanel
         ];
         foreach (var el in elements)
         {
@@ -292,6 +302,8 @@ public partial class MainWindow : Window
         // Overlay spans all rows
         Grid.SetRowSpan(WindowPickerOverlay, 2);
         Grid.SetColumnSpan(WindowPickerOverlay, 1);
+        Grid.SetRowSpan(CommandPaletteOverlay, 2);
+        Grid.SetColumnSpan(CommandPaletteOverlay, 1);
     }
 
     private void ApplyBottomLayout()
@@ -322,6 +334,8 @@ public partial class MainWindow : Window
         // Overlay spans all rows
         Grid.SetRowSpan(WindowPickerOverlay, 3);
         Grid.SetColumnSpan(WindowPickerOverlay, 1);
+        Grid.SetRowSpan(CommandPaletteOverlay, 3);
+        Grid.SetColumnSpan(CommandPaletteOverlay, 1);
     }
 
     private void ApplyLeftLayout()
@@ -360,6 +374,8 @@ public partial class MainWindow : Window
         // Overlay spans everything
         Grid.SetRowSpan(WindowPickerOverlay, 1);
         Grid.SetColumnSpan(WindowPickerOverlay, 3);
+        Grid.SetRowSpan(CommandPaletteOverlay, 1);
+        Grid.SetColumnSpan(CommandPaletteOverlay, 3);
     }
 
     private void ApplyRightLayout()
@@ -398,6 +414,8 @@ public partial class MainWindow : Window
         // Overlay spans everything
         Grid.SetRowSpan(WindowPickerOverlay, 1);
         Grid.SetColumnSpan(WindowPickerOverlay, 3);
+        Grid.SetRowSpan(CommandPaletteOverlay, 1);
+        Grid.SetColumnSpan(CommandPaletteOverlay, 3);
     }
 
     private void ToggleTabBarCollapsed()
@@ -819,6 +837,51 @@ public partial class MainWindow : Window
             _resizeHelper?.SetVisible(true);
     }
 
+    private void OnCommandPaletteItemExecuted(object? sender, Models.CommandPaletteItem item)
+    {
+        _viewModel.CloseCommandPaletteCommand.Execute(null);
+        RestoreEmbeddedWindow();
+
+        switch (item.Tag)
+        {
+            case QuickLaunchApp app:
+                _viewModel.OpenWindowPickerCommand.Execute(null);
+                var pickerVm = (WindowPickerViewModel)WindowPickerControl.DataContext;
+                pickerVm.LaunchQuickAppCommand.Execute(app);
+                break;
+
+            case Models.TabItem tab:
+                _viewModel.SelectTabCommand.Execute(tab);
+                break;
+
+            case HotkeyAction action:
+                switch (action)
+                {
+                    case HotkeyAction.NewTab:
+                        _viewModel.OpenWindowPickerCommand.Execute(null);
+                        break;
+                    case HotkeyAction.CloseTab:
+                        if (_viewModel.SelectedTab != null)
+                            _viewModel.CloseTabCommand.Execute(_viewModel.SelectedTab);
+                        break;
+                }
+                break;
+
+            case string s when s == "Settings":
+                _viewModel.OpenSettingsCommand.Execute(null);
+                break;
+        }
+    }
+
+    private void CommandPaletteOverlay_BackgroundClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource == CommandPaletteOverlay)
+        {
+            _viewModel.CloseCommandPaletteCommand.Execute(null);
+            RestoreEmbeddedWindow();
+        }
+    }
+
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.CurrentWindowHost))
@@ -920,6 +983,30 @@ public partial class MainWindow : Window
                     WindowHostContainer.Visibility = Visibility.Visible;
                 }
             });
+        }
+        else if (e.PropertyName == nameof(MainViewModel.IsCommandPaletteOpen))
+        {
+            if (_viewModel.IsCommandPaletteOpen)
+            {
+                _resizeHelper?.SetVisible(false);
+                if (_viewModel.IsTileVisible)
+                {
+                    foreach (var host in _tiledHosts)
+                        host.Visibility = Visibility.Hidden;
+                }
+                else if (_currentHost != null)
+                {
+                    _currentHost.Visibility = Visibility.Hidden;
+                }
+
+                var palVm = (CommandPaletteViewModel)CommandPaletteControl.DataContext;
+                palVm.Open();
+                CommandPaletteControl.FocusSearch();
+            }
+            else
+            {
+                RestoreEmbeddedWindow();
+            }
         }
         else if (e.PropertyName == nameof(MainViewModel.IsTiled))
         {

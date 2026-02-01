@@ -41,5 +41,6 @@ public enum HotkeyAction
     SwitchToTab7,
     SwitchToTab8,
     SwitchToTab9,
-    ToggleWindow
+    ToggleWindow,
+    CommandPalette
 }

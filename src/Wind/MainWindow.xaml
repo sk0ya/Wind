@@ -375,6 +375,16 @@
                                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                     Margin="24"/>
             </Grid>
+
+            <!-- Command Palette Overlay -->
+            <Grid x:Name="CommandPaletteOverlay" Background="#80000000"
+                  Panel.ZIndex="101"
+                  Visibility="{Binding IsCommandPaletteOpen, Converter={StaticResource BoolToVisibility}}"
+                  MouseLeftButtonDown="CommandPaletteOverlay_BackgroundClick">
+                <views:CommandPalette x:Name="CommandPaletteControl"
+                                      HorizontalAlignment="Center" VerticalAlignment="Top"
+                                      Margin="0,80,0,0"/>
+            </Grid>
         </Grid>
     </Border>
 </Window>

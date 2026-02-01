@@ -37,6 +37,8 @@ public class HotkeyManager : IDisposable
         RegisterHotkey("Previous Tab", System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift, Key.Tab, HotkeyAction.PreviousTab);
         RegisterHotkey("Close Tab", System.Windows.Input.ModifierKeys.Control, Key.W, HotkeyAction.CloseTab);
 
+        RegisterHotkey("Command Palette", System.Windows.Input.ModifierKeys.Alt, Key.P, HotkeyAction.CommandPalette);
+
         // Tab switching 1-9
         for (int i = 1; i <= 9; i++)
         {

@@ -27,6 +27,7 @@ public partial class App : Application
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<WindowPickerViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<CommandPaletteViewModel>();
 
         // Views
         services.AddSingleton<MainWindow>();
