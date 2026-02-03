@@ -42,15 +42,22 @@ public partial class HotkeySettingsViewModel : ObservableObject
     private void LoadHotkeyBindings()
     {
         HotkeyBindings.Clear();
-        foreach (var hotkey in _hotkeyManager.Hotkeys)
+
+        // すべてのデフォルトバインディングを表示（登録成功/失敗に関係なく）
+        foreach (var (name, modifiers, key, action) in HotkeyManager.GetDefaultBindings())
         {
+            // 現在登録されているバインディングがあればその値を使用
+            var registered = _hotkeyManager.Hotkeys.FirstOrDefault(h => h.Action == action);
+            var currentModifiers = registered?.Modifiers ?? modifiers;
+            var currentKey = registered?.Key ?? key;
+
             HotkeyBindings.Add(new HotkeyBindingItem
             {
-                Name = hotkey.Name,
-                DisplayString = hotkey.DisplayString,
-                Action = hotkey.Action,
-                Modifiers = hotkey.Modifiers,
-                Key = hotkey.Key
+                Name = name,
+                DisplayString = FormatHotkeyDisplay(currentModifiers, currentKey),
+                Action = action,
+                Modifiers = currentModifiers,
+                Key = currentKey
             });
         }
     }
