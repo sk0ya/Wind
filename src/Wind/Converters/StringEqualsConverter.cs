@@ -3,7 +3,7 @@ using System.Windows.Data;
 
 namespace Wind.Converters;
 
-public class StringEqualsConverter : IValueConverter
+public class StringEqualsConverter : IValueConverter, IMultiValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
@@ -21,5 +21,25 @@ public class StringEqualsConverter : IValueConverter
         }
 
         return Binding.DoNothing;
+    }
+
+    // IMultiValueConverter implementation for comparing two bound values
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values == null || values.Length < 2)
+            return false;
+
+        var value1 = values[0]?.ToString();
+        var value2 = values[1]?.ToString();
+
+        if (value1 == null || value2 == null)
+            return false;
+
+        return value1.Equals(value2, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
     }
 }

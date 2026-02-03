@@ -304,13 +304,14 @@
 
     </Window.Resources>
 
-    <Border x:Name="MainBorder" BorderThickness="0">
+    <Border x:Name="MainBorder" BorderThickness="0" Background="{DynamicResource ApplicationBackgroundBrush}">
         <Grid x:Name="RootGrid">
             <!-- Row/Column definitions set by code-behind via ApplyTabHeaderPosition -->
 
             <!-- Tab Bar Area: contains tabs, add button, and (for left/right) window controls -->
             <Grid x:Name="TabBarArea"
                   ClipToBounds="True"
+                  Background="{DynamicResource ApplicationBackgroundBrush}"
                   MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <!-- Internal row/column definitions set by code-behind -->
 

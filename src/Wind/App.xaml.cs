@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using System.Windows.Media;
 using Wind.Services;
 using Wind.ViewModels;
 namespace Wind;
@@ -48,13 +49,34 @@ public partial class App : Application
 
         // Apply saved theme
         var settingsManager = _serviceProvider.GetRequiredService<SettingsManager>();
-        var theme = settingsManager.Settings.Theme;
-        var wpfuiTheme = theme switch
+        var settings = settingsManager.Settings;
+        var wpfuiTheme = settings.Theme switch
         {
             "Light" => Wpf.Ui.Appearance.ApplicationTheme.Light,
             _ => Wpf.Ui.Appearance.ApplicationTheme.Dark
         };
         Wpf.Ui.Appearance.ApplicationThemeManager.Apply(wpfuiTheme);
+
+        // Apply accent color
+        if (settings.UseSystemAccent)
+        {
+            Wpf.Ui.Appearance.ApplicationAccentColorManager.ApplySystemAccent();
+        }
+        else
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(settings.AccentColor);
+                Wpf.Ui.Appearance.ApplicationAccentColorManager.Apply(color, wpfuiTheme);
+            }
+            catch
+            {
+                // Invalid color, use default
+            }
+        }
+
+        // Apply background color
+        GeneralSettingsViewModel.ApplyBackgroundColorStatic(settings.BackgroundColor);
 
         // Show main window first
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();

@@ -20,6 +20,9 @@ public class AppSettings
     /// "CloseWind" = close Wind application
     /// </summary>
     public string EmbedCloseAction { get; set; } = "CloseApp";
+    public string AccentColor { get; set; } = "#0078D4";
+    public bool UseSystemAccent { get; set; } = false;
+    public string BackgroundColor { get; set; } = "";  // Empty = use theme default
     public List<HotkeyBindingSetting> CustomHotkeys { get; set; } = new();
 }
 
