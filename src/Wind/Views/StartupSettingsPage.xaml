@@ -30,9 +30,23 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <ui:SymbolIcon Symbol="Apps24" Margin="0,6,10,0"
+                                        <Image Source="{Binding Icon}" Width="24" Height="24"
+                                                       Margin="0,6,10,0" VerticalAlignment="Top"
+                                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                                    <Image.Style>
+                                                        <Style TargetType="Image">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Image.Style>
+                                                </Image>
+                                                <ui:SymbolIcon Symbol="Apps24" Margin="0,6,10,0"
                                                        VerticalAlignment="Top"
-                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                       Visibility="{Binding Icon, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}"/>
                                         <StackPanel Grid.Column="1">
                                             <Grid Margin="0,0,0,4">
                                                 <Grid.ColumnDefinitions>
@@ -127,8 +141,13 @@
                                                  BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Text="{Binding Name}" Margin="2,0"
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Image Source="{Binding Path, Converter={StaticResource PathToIconConverter}}"
+                                                               Width="16" Height="16" Margin="0,0,6,0"
+                                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
                                                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </ListBox.ItemTemplate>
                                         </ListBox>
@@ -149,7 +168,18 @@
                                                 </Grid.ColumnDefinitions>
                                                 <ComboBox ItemsSource="{Binding DataContext.StartupApplications, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                           SelectedItem="{Binding AppToAdd}"
-                                                          DisplayMemberPath="Name" Margin="0,0,4,0"/>
+                                                          Margin="0,0,4,0">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Image Source="{Binding Icon}" Width="16" Height="16"
+                                                                       Margin="0,0,6,0" VerticalAlignment="Center"
+                                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
                                                 <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Add24}" ToolTip="Add to Tile Set"
                                                           Command="{Binding DataContext.AddAppToTileSetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                           CommandParameter="{Binding}" Margin="0,0,4,0"/>

@@ -12,6 +12,8 @@
             <converters:NotNullConverter x:Key="NotNullConverter"/>
             <converters:StringEqualsConverter x:Key="StringEqualsConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <converters:PathToIconConverter x:Key="PathToIconConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

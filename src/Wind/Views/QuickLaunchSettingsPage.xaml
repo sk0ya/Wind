@@ -71,9 +71,23 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <ui:SymbolIcon Symbol="WindowConsole20"
+                                        <Image Source="{Binding Icon}" Width="24" Height="24"
+                                                       Margin="0,6,10,0" VerticalAlignment="Top"
+                                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                                    <Image.Style>
+                                                        <Style TargetType="Image">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Image.Style>
+                                                </Image>
+                                                <ui:SymbolIcon Symbol="WindowConsole20"
                                                        VerticalAlignment="Top" Margin="0,6,10,0"
-                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                       Visibility="{Binding Icon, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}"/>
                                         <StackPanel Grid.Column="1">
                                             <Grid Margin="0,0,0,4">
                                                 <Grid.ColumnDefinitions>

@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.IO;
 using Microsoft.Win32;
+using Wind.Converters;
 using Wind.Models;
 using Wind.Services;
 
@@ -12,14 +14,18 @@ public partial class StartupAppItem : ObservableObject
 {
     private readonly StartupApplication _app;
     private readonly SettingsManager _settingsManager;
+    private ImageSource? _icon;
 
     public StartupAppItem(StartupApplication app, SettingsManager settingsManager)
     {
         _app = app;
         _settingsManager = settingsManager;
+        _icon = PathToIconConverter.GetIconForPath(app.Path);
     }
 
     public StartupApplication Model => _app;
+
+    public ImageSource? Icon => _icon;
 
     public string Name
     {
