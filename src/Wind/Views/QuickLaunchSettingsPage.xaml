@@ -67,6 +67,10 @@
                                         CornerRadius="4" Padding="10,6" Margin="0,0,0,4">
                                     <Border.ContextMenu>
                                         <ContextMenu>
+                                            <MenuItem Header="Run"
+                                                      Command="{Binding DataContext.RunQuickLaunchAppCommand, Source={x:Reference Name=QuickLaunchPathBox}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <Separator/>
                                             <MenuItem Header="Remove"
                                                       Command="{Binding DataContext.RemoveQuickLaunchAppCommand, Source={x:Reference Name=QuickLaunchPathBox}}"
                                                       CommandParameter="{Binding}"/>

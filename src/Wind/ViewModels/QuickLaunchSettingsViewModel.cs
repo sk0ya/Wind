@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -317,5 +318,26 @@ public partial class QuickLaunchSettingsViewModel : ObservableObject
         _settingsManager.RemoveQuickLaunchApp(item.Model);
         QuickLaunchApps.Remove(item);
         OnPropertyChanged(nameof(HasNoQuickLaunchApps));
+    }
+
+    [RelayCommand]
+    private void RunQuickLaunchApp(QuickLaunchAppItem? item)
+    {
+        if (item == null) return;
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = item.Path,
+                Arguments = item.Model.Arguments,
+                UseShellExecute = true
+            };
+            Process.Start(psi);
+        }
+        catch
+        {
+            // Ignore launch errors
+        }
     }
 }
