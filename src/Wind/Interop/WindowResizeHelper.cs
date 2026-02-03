@@ -299,7 +299,7 @@ public class WindowResizeHelper : IDisposable
 
             int exStyle = GetWindowLong(_blockerHwnd, GWL_EXSTYLE);
             SetWindowLong(_blockerHwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
-            SetLayeredWindowAttributes(_blockerHwnd, 0, 1, LWA_ALPHA);
+            SetLayeredWindowAttributes(_blockerHwnd, 0, 0, LWA_ALPHA);
 
             _hwndMap[_blockerHwnd] = (this, BLOCKER);
         }
