@@ -8,6 +8,50 @@ using Wind.Services;
 
 namespace Wind.ViewModels;
 
+public partial class StartupAppItem : ObservableObject
+{
+    private readonly StartupApplication _app;
+    private readonly SettingsManager _settingsManager;
+
+    public StartupAppItem(StartupApplication app, SettingsManager settingsManager)
+    {
+        _app = app;
+        _settingsManager = settingsManager;
+    }
+
+    public StartupApplication Model => _app;
+
+    public string Name
+    {
+        get => _app.Name;
+        set
+        {
+            if (_app.Name != value)
+            {
+                _app.Name = value;
+                OnPropertyChanged();
+                _settingsManager.SaveStartupApplication();
+            }
+        }
+    }
+
+    public string Path => _app.Path;
+
+    public string Arguments
+    {
+        get => _app.Arguments;
+        set
+        {
+            if (_app.Arguments != value)
+            {
+                _app.Arguments = value;
+                OnPropertyChanged();
+                _settingsManager.SaveStartupApplication();
+            }
+        }
+    }
+}
+
 public partial class TileSetItem : ObservableObject
 {
     [ObservableProperty]
@@ -33,13 +77,7 @@ public partial class StartupSettingsViewModel : ObservableObject
     private readonly SettingsManager _settingsManager;
 
     [ObservableProperty]
-    private ObservableCollection<StartupApplication> _startupApplications = new();
-
-    [ObservableProperty]
-    private StartupApplication? _selectedStartupApplication;
-
-    [ObservableProperty]
-    private string _selectedAppArguments = string.Empty;
+    private ObservableCollection<StartupAppItem> _startupApplications = new();
 
     // Tile Sets
     [ObservableProperty]
@@ -47,6 +85,8 @@ public partial class StartupSettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _newTileSetName = string.Empty;
+
+    public bool HasNoStartupApplications => StartupApplications.Count == 0;
 
     public StartupSettingsViewModel(SettingsManager settingsManager)
     {
@@ -61,10 +101,11 @@ public partial class StartupSettingsViewModel : ObservableObject
         StartupApplications.Clear();
         foreach (var app in settings.StartupApplications)
         {
-            StartupApplications.Add(app);
+            StartupApplications.Add(new StartupAppItem(app, _settingsManager));
         }
 
         RebuildTileSets();
+        OnPropertyChanged(nameof(HasNoStartupApplications));
     }
 
     public void Reload()
@@ -76,6 +117,7 @@ public partial class StartupSettingsViewModel : ObservableObject
     {
         TileSets.Clear();
         var tileGroups = StartupApplications
+            .Select(item => item.Model)
             .Where(a => !string.IsNullOrEmpty(a.Tile))
             .GroupBy(a => a.Tile!)
             .OrderBy(g => g.Key);
@@ -88,20 +130,6 @@ public partial class StartupSettingsViewModel : ObservableObject
                 tileSet.Apps.Add(app);
             }
             TileSets.Add(tileSet);
-        }
-    }
-
-    partial void OnSelectedStartupApplicationChanged(StartupApplication? value)
-    {
-        SelectedAppArguments = value?.Arguments ?? string.Empty;
-    }
-
-    partial void OnSelectedAppArgumentsChanged(string value)
-    {
-        if (SelectedStartupApplication != null && SelectedStartupApplication.Arguments != value)
-        {
-            SelectedStartupApplication.Arguments = value;
-            _settingsManager.SaveStartupApplication();
         }
     }
 
@@ -121,23 +149,24 @@ public partial class StartupSettingsViewModel : ObservableObject
             var name = Path.GetFileNameWithoutExtension(path);
 
             var app = _settingsManager.AddStartupApplication(path, "", name);
-            StartupApplications.Add(app);
+            StartupApplications.Add(new StartupAppItem(app, _settingsManager));
+            OnPropertyChanged(nameof(HasNoStartupApplications));
         }
     }
 
     [RelayCommand]
-    private void RemoveStartupApplication()
+    private void RemoveStartupApplication(StartupAppItem? item)
     {
-        if (SelectedStartupApplication == null) return;
+        if (item == null) return;
 
         foreach (var ts in TileSets)
         {
-            ts.Apps.Remove(SelectedStartupApplication);
+            ts.Apps.Remove(item.Model);
         }
 
-        _settingsManager.RemoveStartupApplication(SelectedStartupApplication);
-        StartupApplications.Remove(SelectedStartupApplication);
-        SelectedStartupApplication = null;
+        _settingsManager.RemoveStartupApplication(item.Model);
+        StartupApplications.Remove(item);
+        OnPropertyChanged(nameof(HasNoStartupApplications));
     }
 
     // --- Tile Set commands ---
@@ -146,11 +175,11 @@ public partial class StartupSettingsViewModel : ObservableObject
     {
         var usedApps = TileSets.SelectMany(ts => ts.Apps).ToHashSet();
         var available = new ObservableCollection<StartupApplication>();
-        foreach (var app in StartupApplications)
+        foreach (var item in StartupApplications)
         {
-            if (!usedApps.Contains(app))
+            if (!usedApps.Contains(item.Model))
             {
-                available.Add(app);
+                available.Add(item.Model);
             }
         }
         return available;

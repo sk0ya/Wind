@@ -13,57 +13,79 @@
             <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                     CornerRadius="6" Padding="12,8" Margin="0,0,0,4">
                 <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Startup Applications" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <ui:Button Icon="{ui:SymbolIcon Add24}"
-                                      Command="{Binding AddStartupApplicationCommand}"
-                                      ToolTip="Add Application" Margin="0,0,4,0"/>
-                            <ui:Button Icon="{ui:SymbolIcon Delete24}"
-                                      Command="{Binding RemoveStartupApplicationCommand}"
-                                      IsEnabled="{Binding SelectedStartupApplication, Converter={StaticResource NotNullConverter}}"
-                                      ToolTip="Remove Selected"/>
-                        </StackPanel>
-                    </Grid>
-                    <ListBox ItemsSource="{Binding StartupApplications}"
-                             SelectedItem="{Binding SelectedStartupApplication}"
-                             MinHeight="40" MaxHeight="200"
-                             Margin="0,6,0,0"
-                             Background="Transparent"
-                             BorderThickness="1"
-                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="2">
-                                    <ui:SymbolIcon Symbol="Apps24" Margin="0,0,6,0"
-                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <TextBlock Text="{Binding Path}" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                               TextTrimming="CharacterEllipsis" MaxWidth="350"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <ui:Button Icon="{ui:SymbolIcon Add24}"
+                              Content="Add Application"
+                              Command="{Binding AddStartupApplicationCommand}"
+                              HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
-                    <Grid Margin="0,6,0,0"
-                          Visibility="{Binding SelectedStartupApplication, Converter={StaticResource NotNullConverter}}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Args" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <ui:TextBox Grid.Column="1"
-                                   Text="{Binding SelectedAppArguments, UpdateSourceTrigger=PropertyChanged}"
-                                   PlaceholderText="e.g. --flag value"/>
-                    </Grid>
+                    <!-- App list with inline editing -->
+                    <ItemsControl ItemsSource="{Binding StartupApplications}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:StartupAppItem}">
+                                <Border Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ui:SymbolIcon Symbol="Apps24" Margin="0,6,10,0"
+                                                       VerticalAlignment="Top"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Name" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                <ui:TextBox Grid.Column="1"
+                                                           Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                           FontSize="12"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Path" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Path}" FontSize="11"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Path}"/>
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Args" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                <ui:TextBox Grid.Column="1"
+                                                           Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}"
+                                                           PlaceholderText="e.g. --flag value"
+                                                           FontSize="12"/>
+                                            </Grid>
+                                        </StackPanel>
+                                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Delete24}"
+                                                  VerticalAlignment="Top"
+                                                  Command="{Binding DataContext.RemoveStartupApplicationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  CommandParameter="{Binding}"
+                                                  ToolTip="Remove" Margin="8,0,0,0"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="No apps configured"
+                               Visibility="{Binding HasNoStartupApplications, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               FontSize="12" HorizontalAlignment="Center" Margin="0,8"/>
                 </StackPanel>
             </Border>
 

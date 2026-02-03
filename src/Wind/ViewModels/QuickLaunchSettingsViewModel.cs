@@ -8,21 +8,56 @@ using Wind.Services;
 
 namespace Wind.ViewModels;
 
+public partial class QuickLaunchAppItem : ObservableObject
+{
+    private readonly QuickLaunchApp _app;
+    private readonly SettingsManager _settingsManager;
+
+    public QuickLaunchAppItem(QuickLaunchApp app, SettingsManager settingsManager)
+    {
+        _app = app;
+        _settingsManager = settingsManager;
+    }
+
+    public QuickLaunchApp Model => _app;
+
+    public string Name
+    {
+        get => _app.Name;
+        set
+        {
+            if (_app.Name != value)
+            {
+                _app.Name = value;
+                OnPropertyChanged();
+                _settingsManager.SaveQuickLaunchApp();
+            }
+        }
+    }
+
+    public string Path => _app.Path;
+
+    public string Arguments
+    {
+        get => _app.Arguments;
+        set
+        {
+            if (_app.Arguments != value)
+            {
+                _app.Arguments = value;
+                OnPropertyChanged();
+                _settingsManager.SaveQuickLaunchApp();
+            }
+        }
+    }
+}
+
 public partial class QuickLaunchSettingsViewModel : ObservableObject
 {
     private readonly SettingsManager _settingsManager;
 
     [ObservableProperty]
-    private ObservableCollection<QuickLaunchApp> _quickLaunchApps = new();
-
-    [ObservableProperty]
-    private QuickLaunchApp? _selectedQuickLaunchApp;
-
-    [ObservableProperty]
-    private string _selectedQuickLaunchAppName = string.Empty;
-
-    [ObservableProperty]
-    private string _selectedQuickLaunchAppArguments = string.Empty;
+    private ObservableCollection<QuickLaunchAppItem> _quickLaunchApps = new();
 
     [ObservableProperty]
     private string _newQuickLaunchPath = string.Empty;
@@ -35,6 +70,8 @@ public partial class QuickLaunchSettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _selectedSuggestion;
+
+    public bool HasNoQuickLaunchApps => QuickLaunchApps.Count == 0;
 
     private List<string> _allPathExecutables = new();
     private bool _suppressSuggestions;
@@ -51,8 +88,9 @@ public partial class QuickLaunchSettingsViewModel : ObservableObject
         QuickLaunchApps.Clear();
         foreach (var app in _settingsManager.Settings.QuickLaunchApps)
         {
-            QuickLaunchApps.Add(app);
+            QuickLaunchApps.Add(new QuickLaunchAppItem(app, _settingsManager));
         }
+        OnPropertyChanged(nameof(HasNoQuickLaunchApps));
     }
 
     public void Reload()
@@ -180,30 +218,6 @@ public partial class QuickLaunchSettingsViewModel : ObservableObject
         }
     }
 
-    partial void OnSelectedQuickLaunchAppChanged(QuickLaunchApp? value)
-    {
-        SelectedQuickLaunchAppName = value?.Name ?? string.Empty;
-        SelectedQuickLaunchAppArguments = value?.Arguments ?? string.Empty;
-    }
-
-    partial void OnSelectedQuickLaunchAppNameChanged(string value)
-    {
-        if (SelectedQuickLaunchApp is not null && SelectedQuickLaunchApp.Name != value)
-        {
-            SelectedQuickLaunchApp.Name = value;
-            _settingsManager.SaveQuickLaunchApp();
-        }
-    }
-
-    partial void OnSelectedQuickLaunchAppArgumentsChanged(string value)
-    {
-        if (SelectedQuickLaunchApp is not null && SelectedQuickLaunchApp.Arguments != value)
-        {
-            SelectedQuickLaunchApp.Arguments = value;
-            _settingsManager.SaveQuickLaunchApp();
-        }
-    }
-
     [RelayCommand]
     private void BrowseQuickLaunchApp()
     {
@@ -232,8 +246,9 @@ public partial class QuickLaunchSettingsViewModel : ObservableObject
             name = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
 
         var app = _settingsManager.AddQuickLaunchApp(path, arguments, name);
-        QuickLaunchApps.Add(app);
+        QuickLaunchApps.Add(new QuickLaunchAppItem(app, _settingsManager));
         NewQuickLaunchPath = string.Empty;
+        OnPropertyChanged(nameof(HasNoQuickLaunchApps));
     }
 
     private static void ParsePathAndArguments(string input, out string path, out string arguments)
@@ -275,12 +290,12 @@ public partial class QuickLaunchSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void RemoveQuickLaunchApp()
+    private void RemoveQuickLaunchApp(QuickLaunchAppItem? item)
     {
-        if (SelectedQuickLaunchApp == null) return;
+        if (item == null) return;
 
-        _settingsManager.RemoveQuickLaunchApp(SelectedQuickLaunchApp);
-        QuickLaunchApps.Remove(SelectedQuickLaunchApp);
-        SelectedQuickLaunchApp = null;
+        _settingsManager.RemoveQuickLaunchApp(item.Model);
+        QuickLaunchApps.Remove(item);
+        OnPropertyChanged(nameof(HasNoQuickLaunchApps));
     }
 }
