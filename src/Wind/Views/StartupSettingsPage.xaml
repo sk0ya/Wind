@@ -114,18 +114,19 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TileSetItem}">
                                 <Border Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                        CornerRadius="4" Padding="8,6" Margin="0,0,0,4">
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,6">
                                     <StackPanel>
-                                        <Grid Margin="0,0,0,4">
+                                        <!-- Header -->
+                                        <Grid Margin="0,0,0,8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <ui:SymbolIcon Symbol="Grid24" Margin="0,0,6,0"
+                                            <ui:SymbolIcon Symbol="Grid24" Margin="0,0,8,0"
                                                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"
-                                                       VerticalAlignment="Center"
+                                                       FontSize="13" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                             <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Delete24}"
                                                       ToolTip="Remove Tile Set"
@@ -133,67 +134,75 @@
                                                       CommandParameter="{Binding}"/>
                                         </Grid>
 
-                                        <ListBox ItemsSource="{Binding Apps}"
-                                                 SelectedItem="{Binding SelectedApp}"
-                                                 MinHeight="24" MaxHeight="80"
-                                                 Background="Transparent"
-                                                 BorderThickness="1"
-                                                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
-                                            <ListBox.ItemTemplate>
+                                        <!-- App list - each app in its own row -->
+                                        <ItemsControl ItemsSource="{Binding Apps}">
+                                            <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Image Source="{Binding Path, Converter={StaticResource PathToIconConverter}}"
-                                                               Width="16" Height="16" Margin="0,0,6,0"
-                                                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
-                                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                    </StackPanel>
+                                                    <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                            CornerRadius="4" Padding="8,6" Margin="0,0,0,4">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Image Source="{Binding Path, Converter={StaticResource PathToIconConverter}}"
+                                                                   Width="20" Height="20" Margin="0,0,8,0"
+                                                                   VerticalAlignment="Center"
+                                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                                                       VerticalAlignment="Center" FontSize="12"
+                                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                            <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon ArrowUp24}"
+                                                                      ToolTip="Move Up" Padding="4"
+                                                                      Command="{Binding DataContext.MoveAppUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                      CommandParameter="{Binding}" Margin="0,0,2,0"/>
+                                                            <ui:Button Grid.Column="3" Icon="{ui:SymbolIcon ArrowDown24}"
+                                                                      ToolTip="Move Down" Padding="4"
+                                                                      Command="{Binding DataContext.MoveAppDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                      CommandParameter="{Binding}" Margin="0,0,2,0"/>
+                                                            <ui:Button Grid.Column="4" Icon="{ui:SymbolIcon Dismiss24}"
+                                                                      ToolTip="Remove" Padding="4"
+                                                                      Command="{Binding DataContext.RemoveAppFromTileSetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                      CommandParameter="{Binding}"/>
+                                                        </Grid>
+                                                    </Border>
                                                 </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
 
+                                        <!-- Empty state -->
+                                        <TextBlock Text="No apps in this tile set"
+                                                   Visibility="{Binding HasNoApps, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                   FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,8"/>
+
+                                        <!-- Add app section -->
                                         <Grid Margin="0,4,0,0">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <ComboBox ItemsSource="{Binding DataContext.StartupApplications, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                          SelectedItem="{Binding AppToAdd}"
-                                                          Margin="0,0,4,0">
-                                                    <ComboBox.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <Image Source="{Binding Icon}" Width="16" Height="16"
-                                                                       Margin="0,0,6,0" VerticalAlignment="Center"
-                                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                                            </StackPanel>
-                                                        </DataTemplate>
-                                                    </ComboBox.ItemTemplate>
-                                                </ComboBox>
-                                                <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Add24}" ToolTip="Add to Tile Set"
-                                                          Command="{Binding DataContext.AddAppToTileSetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                          CommandParameter="{Binding}" Margin="0,0,4,0"/>
-                                            </Grid>
-
-                                            <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon ArrowUp24}" ToolTip="Move Up"
-                                                      Command="{Binding DataContext.MoveAppUpInTileSetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                      CommandParameter="{Binding}" Margin="0,0,2,0"/>
-                                            <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon ArrowDown24}" ToolTip="Move Down"
-                                                      Command="{Binding DataContext.MoveAppDownInTileSetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                      CommandParameter="{Binding}" Margin="0,0,2,0"/>
-                                            <ui:Button Grid.Column="3" Icon="{ui:SymbolIcon Dismiss24}" ToolTip="Remove from Tile Set"
-                                                      Command="{Binding DataContext.RemoveAppFromTileSetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                      CommandParameter="{Binding}"/>
+                                            <ComboBox ItemsSource="{Binding DataContext.StartupApplications, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      Margin="0,0,6,0">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Image Source="{Binding Icon}" Width="16" Height="16"
+                                                                   Margin="0,0,6,0" VerticalAlignment="Center"
+                                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Add24}"
+                                                      Content="Add"
+                                                      ToolTip="Add to Tile Set"
+                                                      Click="AddAppToTileSet_Click"
+                                                      Tag="{Binding}"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -201,17 +210,21 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Grid Margin="0,2,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ui:TextBox Text="{Binding NewTileSetName, UpdateSourceTrigger=PropertyChanged}"
-                                   PlaceholderText="New tile set name" Margin="0,0,4,0"/>
-                        <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Add24}"
-                                  Content="Create"
-                                  Command="{Binding AddTileSetCommand}"/>
-                    </Grid>
+                    <!-- Create new tile set -->
+                    <Border Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                            CornerRadius="4" Padding="10,8" Margin="0,4,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:TextBox Text="{Binding NewTileSetName, UpdateSourceTrigger=PropertyChanged}"
+                                       PlaceholderText="New tile set name" Margin="0,0,6,0"/>
+                            <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Add24}"
+                                      Content="Create"
+                                      Command="{Binding AddTileSetCommand}"/>
+                        </Grid>
+                    </Border>
                 </StackPanel>
             </Border>
         </StackPanel>

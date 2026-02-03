@@ -67,14 +67,14 @@ public partial class TileSetItem : ObservableObject
     private ObservableCollection<StartupApplication> _apps = new();
 
     [ObservableProperty]
-    private StartupApplication? _selectedApp;
+    private StartupAppItem? _appToAdd;
 
-    [ObservableProperty]
-    private StartupApplication? _appToAdd;
+    public bool HasNoApps => Apps.Count == 0;
 
     public TileSetItem(string name)
     {
         _name = name;
+        _apps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoApps));
     }
 }
 
@@ -218,7 +218,7 @@ public partial class StartupSettingsViewModel : ObservableObject
     {
         if (tileSet.AppToAdd == null) return;
 
-        var app = tileSet.AppToAdd;
+        var app = tileSet.AppToAdd.Model;
         app.Tile = tileSet.Name;
         app.TilePosition = tileSet.Apps.Count;
         tileSet.Apps.Add(app);
@@ -226,26 +226,35 @@ public partial class StartupSettingsViewModel : ObservableObject
         _settingsManager.SaveStartupApplication();
     }
 
-    [RelayCommand]
-    private void RemoveAppFromTileSet(TileSetItem tileSet)
+    public void AddAppToTileSetDirect(TileSetItem tileSet, StartupAppItem appItem)
     {
-        if (tileSet.SelectedApp == null) return;
+        var app = appItem.Model;
+        app.Tile = tileSet.Name;
+        app.TilePosition = tileSet.Apps.Count;
+        tileSet.Apps.Add(app);
+        _settingsManager.SaveStartupApplication();
+    }
 
-        var app = tileSet.SelectedApp;
+    [RelayCommand]
+    private void RemoveAppFromTileSet(StartupApplication app)
+    {
+        var tileSet = TileSets.FirstOrDefault(ts => ts.Apps.Contains(app));
+        if (tileSet == null) return;
+
         app.Tile = null;
         app.TilePosition = null;
         tileSet.Apps.Remove(app);
-        tileSet.SelectedApp = null;
         UpdateTilePositions(tileSet);
         _settingsManager.SaveStartupApplication();
     }
 
     [RelayCommand]
-    private void MoveAppUpInTileSet(TileSetItem tileSet)
+    private void MoveAppUp(StartupApplication app)
     {
-        if (tileSet.SelectedApp == null) return;
+        var tileSet = TileSets.FirstOrDefault(ts => ts.Apps.Contains(app));
+        if (tileSet == null) return;
 
-        var index = tileSet.Apps.IndexOf(tileSet.SelectedApp);
+        var index = tileSet.Apps.IndexOf(app);
         if (index <= 0) return;
 
         tileSet.Apps.Move(index, index - 1);
@@ -253,11 +262,12 @@ public partial class StartupSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void MoveAppDownInTileSet(TileSetItem tileSet)
+    private void MoveAppDown(StartupApplication app)
     {
-        if (tileSet.SelectedApp == null) return;
+        var tileSet = TileSets.FirstOrDefault(ts => ts.Apps.Contains(app));
+        if (tileSet == null) return;
 
-        var index = tileSet.Apps.IndexOf(tileSet.SelectedApp);
+        var index = tileSet.Apps.IndexOf(app);
         if (index < 0 || index >= tileSet.Apps.Count - 1) return;
 
         tileSet.Apps.Move(index, index + 1);
