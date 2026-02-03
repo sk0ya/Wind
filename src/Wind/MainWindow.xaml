@@ -14,8 +14,10 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="NoResize"
-        Background="Transparent"
+        Background="{DynamicResource ApplicationBackgroundBrush}"
         AllowsTransparency="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
         StateChanged="Window_StateChanged">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
@@ -304,14 +306,17 @@
 
     </Window.Resources>
 
-    <Border x:Name="MainBorder" BorderThickness="0" Background="{DynamicResource ApplicationBackgroundBrush}">
-        <Grid x:Name="RootGrid">
+    <Border x:Name="MainBorder" BorderThickness="0" Background="{DynamicResource ApplicationBackgroundBrush}"
+            UseLayoutRounding="True" SnapsToDevicePixels="True">
+        <Grid x:Name="RootGrid" UseLayoutRounding="True" SnapsToDevicePixels="True">
             <!-- Row/Column definitions set by code-behind via ApplyTabHeaderPosition -->
 
             <!-- Tab Bar Area: contains tabs, add button, and (for left/right) window controls -->
             <Grid x:Name="TabBarArea"
                   ClipToBounds="True"
                   Background="{DynamicResource ApplicationBackgroundBrush}"
+                  UseLayoutRounding="True"
+                  SnapsToDevicePixels="True"
                   MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <!-- Internal row/column definitions set by code-behind -->
 
@@ -410,7 +415,8 @@
                     Background="{DynamicResource ControlStrokeColorDefaultBrush}"/>
 
             <!-- Content Area -->
-            <Grid x:Name="ContentPanel" Background="{DynamicResource ApplicationBackgroundBrush}">
+            <Grid x:Name="ContentPanel" Background="{DynamicResource ApplicationBackgroundBrush}"
+                  UseLayoutRounding="True" SnapsToDevicePixels="True">
                 <!-- Empty State -->
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                             Visibility="{Binding SelectedTab, Converter={StaticResource NullToVisibility}, ConverterParameter=invert}"
@@ -423,7 +429,8 @@
 
                 <!-- Single Window Host Container -->
                 <Border x:Name="WindowHostContainer" ClipToBounds="True" Padding="0" Margin="0"
-                        Background="Black"
+                        Background="{DynamicResource ApplicationBackgroundBrush}"
+                        UseLayoutRounding="True" SnapsToDevicePixels="True"
                         Visibility="{Binding SelectedTab, Converter={StaticResource NullToVisibility}}">
                     <ContentControl x:Name="WindowHostContent"
                                     HorizontalAlignment="Stretch"
@@ -436,6 +443,7 @@
 
                 <!-- Tile Container -->
                 <Grid x:Name="TileContainer" ClipToBounds="True"
+                      UseLayoutRounding="True" SnapsToDevicePixels="True"
                       Visibility="Collapsed"/>
 
                 <!-- Content Tab Container (Settings etc.) -->

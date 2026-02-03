@@ -41,6 +41,7 @@ public class WindowResizeHelper : IDisposable
     private const uint WM_SETCURSOR = 0x0020;
     private const uint WM_LBUTTONDOWN = 0x0201;
     private const uint WM_PAINT = 0x000F;
+    private const uint WM_ERASEBKGND = 0x0014;
     private const uint WM_NCDESTROY = 0x0082;
     private const int SC_SIZE = 0xF000;
     private const uint WM_SYSCOMMAND = 0x0112;
@@ -115,6 +116,11 @@ public class WindowResizeHelper : IDisposable
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr GetStockObject(int fnObject);
+
+    private const int NULL_BRUSH = 5;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
     {
@@ -174,6 +180,7 @@ public class WindowResizeHelper : IDisposable
             lpfnWndProc = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate),
             hInstance = GetModuleHandle(null),
             lpszClassName = ClassName,
+            hbrBackground = GetStockObject(NULL_BRUSH),
         };
 
         RegisterClass(ref wc);
@@ -298,7 +305,7 @@ public class WindowResizeHelper : IDisposable
         }
         else
         {
-            MoveWindow(_blockerHwnd, x, y, width, height, true);
+            MoveWindow(_blockerHwnd, x, y, width, height, false);
         }
 
         if (_visible)
@@ -335,6 +342,9 @@ public class WindowResizeHelper : IDisposable
                 case WM_LBUTTONDOWN:
                     return IntPtr.Zero;
 
+                case WM_ERASEBKGND:
+                    return (IntPtr)1;
+
                 case WM_PAINT:
                     BeginPaint(hWnd, out var bps);
                     EndPaint(hWnd, ref bps);
@@ -367,6 +377,9 @@ public class WindowResizeHelper : IDisposable
                 }
                 return IntPtr.Zero;
             }
+
+            case WM_ERASEBKGND:
+                return (IntPtr)1;
 
             case WM_PAINT:
             {

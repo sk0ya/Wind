@@ -51,7 +51,7 @@ public class WindowHost : HwndHost
     [DllImport("gdi32.dll")]
     private static extern IntPtr GetStockObject(int fnObject);
 
-    private const int BLACK_BRUSH = 4;
+    private const int NULL_BRUSH = 5;
 
     [DllImport("user32.dll")]
     private static extern IntPtr SetWinEventHook(
@@ -154,7 +154,7 @@ public class WindowHost : HwndHost
             hInstance = GetModuleHandle(null),
             hIcon = IntPtr.Zero,
             hCursor = IntPtr.Zero,
-            hbrBackground = GetStockObject(BLACK_BRUSH),
+            hbrBackground = GetStockObject(NULL_BRUSH),
             lpszMenuName = null,
             lpszClassName = HostClassName
         };

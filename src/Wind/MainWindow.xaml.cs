@@ -476,6 +476,21 @@ public partial class MainWindow : Window
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(WndProc);
 
+        // Set window background color to prevent black borders during resize
+        if (source?.CompositionTarget != null)
+        {
+            // Get the current theme background color
+            var bgBrush = FindResource("ApplicationBackgroundBrush") as SolidColorBrush;
+            if (bgBrush != null)
+            {
+                source.CompositionTarget.BackgroundColor = bgBrush.Color;
+            }
+        }
+
+        // Extend DWM frame into client area to prevent black borders
+        var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        DwmExtendFrameIntoClientArea(hwnd, ref margins);
+
         // Create resize grip overlay windows at the window edges
         _resizeHelper = new WindowResizeHelper(hwnd);
     }
@@ -502,12 +517,20 @@ public partial class MainWindow : Window
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         const int WM_GETMINMAXINFO = 0x0024;
+        const int WM_ERASEBKGND = 0x0014;
 
-        if (msg == WM_GETMINMAXINFO)
+        switch (msg)
         {
-            // Adjust maximize size to respect taskbar
-            WmGetMinMaxInfo(hwnd, lParam);
-            handled = true;
+            case WM_GETMINMAXINFO:
+                // Adjust maximize size to respect taskbar
+                WmGetMinMaxInfo(hwnd, lParam);
+                handled = true;
+                break;
+
+            case WM_ERASEBKGND:
+                // Prevent black background flicker during resize
+                handled = true;
+                return (IntPtr)1;
         }
 
         return IntPtr.Zero;
@@ -1536,6 +1559,22 @@ public partial class MainWindow : Window
         public RECT rcMonitor;
         public RECT rcWork;
         public int dwFlags;
+    }
+
+    #endregion
+
+    #region DWM Interop
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MARGINS
+    {
+        public int Left;
+        public int Right;
+        public int Top;
+        public int Bottom;
     }
 
     #endregion
