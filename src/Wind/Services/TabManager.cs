@@ -209,9 +209,16 @@ public class TabManager
 
     public void CloseTab(TabItem tab)
     {
+        // Content tabs (settings, etc.) are not embedded apps, so always just remove them
+        if (tab.IsContentTab)
+        {
+            RemoveTab(tab);
+            return;
+        }
+
         var closeAction = _settingsManager.Settings.EmbedCloseAction;
         System.Diagnostics.Debug.WriteLine($"CloseTab called with action: {closeAction}");
-        
+
         switch (closeAction)
         {
             case "CloseApp":
