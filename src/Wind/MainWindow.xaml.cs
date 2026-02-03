@@ -23,7 +23,10 @@ public partial class MainWindow : Window
     private Point? _dragStartPoint;
     private bool _isDragging;
     private readonly List<WindowHost> _tiledHosts = new();
-    private Views.SettingsPage? _settingsPage;
+    private Views.GeneralSettingsPage? _generalSettingsPage;
+    private Views.StartupSettingsPage? _startupSettingsPage;
+    private Views.QuickLaunchSettingsPage? _quickLaunchSettingsPage;
+    private Views.ProcessInfoPage? _processInfoPage;
     private string _currentTabPosition = "Top";
     private WindowResizeHelper? _resizeHelper;
     private bool _isTabBarCollapsed;
@@ -256,7 +259,7 @@ public partial class MainWindow : Window
         // The TitleBarButtonStyle sets Width=46, Height=36.
         // For vertical mode, we clear the local Width so buttons share the row evenly.
         // For horizontal mode, we clear local values to let the Style apply.
-        Button[] buttons = [SettingsButton, MinimizeButton, MaximizeButton, CloseButton];
+        Button[] buttons = [MenuButton, MinimizeButton, MaximizeButton, CloseButton];
 
         foreach (var btn in buttons)
         {
@@ -740,9 +743,33 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    private void MenuButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.OpenSettingsCommand.Execute(null);
+        if (sender is Button btn && btn.ContextMenu != null)
+        {
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private void OpenGeneralSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenContentTabCommand.Execute("GeneralSettings");
+    }
+
+    private void OpenProcessInfo_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenContentTabCommand.Execute("ProcessInfo");
+    }
+
+    private void OpenStartupSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenContentTabCommand.Execute("StartupSettings");
+    }
+
+    private void OpenQuickLaunchSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenContentTabCommand.Execute("QuickLaunchSettings");
     }
 
     private void TabItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -803,6 +830,121 @@ public partial class MainWindow : Window
         }
 
         e.Handled = true;
+    }
+
+    private void TabContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu || menu.Tag is not Models.TabItem tab) return;
+
+        bool isWindowTab = !tab.IsContentTab && tab.Window != null;
+        string? exePath = tab.Window?.ExecutablePath;
+
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            var header = item.Header?.ToString() ?? "";
+
+            if (header.StartsWith("Startup"))
+            {
+                if (isWindowTab && !string.IsNullOrEmpty(exePath))
+                {
+                    item.Visibility = Visibility.Visible;
+                    bool isRegistered = _settingsManager.IsInStartupApplications(exePath);
+                    item.Header = isRegistered ? "Startup から削除" : "Startup に登録";
+                }
+                else
+                {
+                    item.Visibility = Visibility.Collapsed;
+                }
+            }
+            else if (header.StartsWith("QuickLaunch"))
+            {
+                if (isWindowTab && !string.IsNullOrEmpty(exePath))
+                {
+                    item.Visibility = Visibility.Visible;
+                    bool isRegistered = _settingsManager.IsInQuickLaunchApps(exePath);
+                    item.Header = isRegistered ? "QuickLaunch から削除" : "QuickLaunch に登録";
+                }
+                else
+                {
+                    item.Visibility = Visibility.Collapsed;
+                }
+            }
+            else if (header is "ファイルパスをコピー" or "エクスプローラーで開く" or "タブ名を変更")
+            {
+                item.Visibility = isWindowTab ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void ToggleStartup_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement el || el.Tag is not Models.TabItem tab) return;
+        var exePath = tab.Window?.ExecutablePath;
+        if (string.IsNullOrEmpty(exePath)) return;
+
+        if (_settingsManager.IsInStartupApplications(exePath))
+        {
+            _settingsManager.RemoveStartupApplicationByPath(exePath);
+            _viewModel.StatusMessage = $"Startup から削除: {tab.DisplayTitle}";
+        }
+        else
+        {
+            _settingsManager.AddStartupApplication(exePath, "", tab.DisplayTitle);
+            _viewModel.StatusMessage = $"Startup に登録: {tab.DisplayTitle}";
+        }
+    }
+
+    private void ToggleQuickLaunch_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement el || el.Tag is not Models.TabItem tab) return;
+        var exePath = tab.Window?.ExecutablePath;
+        if (string.IsNullOrEmpty(exePath)) return;
+
+        if (_settingsManager.IsInQuickLaunchApps(exePath))
+        {
+            _settingsManager.RemoveQuickLaunchAppByPath(exePath);
+            _viewModel.StatusMessage = $"QuickLaunch から削除: {tab.DisplayTitle}";
+        }
+        else
+        {
+            _settingsManager.AddQuickLaunchApp(exePath, "", tab.DisplayTitle);
+            _viewModel.StatusMessage = $"QuickLaunch に登録: {tab.DisplayTitle}";
+        }
+    }
+
+    private void CopyExePath_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement el && el.Tag is Models.TabItem tab && !string.IsNullOrEmpty(tab.Window?.ExecutablePath))
+        {
+            Clipboard.SetText(tab.Window.ExecutablePath);
+            _viewModel.StatusMessage = "パスをコピーしました";
+        }
+    }
+
+    private void OpenInExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement el && el.Tag is Models.TabItem tab && !string.IsNullOrEmpty(tab.Window?.ExecutablePath))
+        {
+            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{tab.Window.ExecutablePath}\"");
+        }
+    }
+
+    private void RenameTab_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement el && el.Tag is Models.TabItem tab)
+        {
+            var dialog = new Views.RenameDialog(tab.DisplayTitle)
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.ResultName))
+            {
+                tab.CustomTitle = dialog.ResultName;
+                _viewModel.StatusMessage = $"タブ名を変更: {tab.DisplayTitle}";
+            }
+        }
     }
 
     private void AddWindowButton_Click(object sender, RoutedEventArgs e)
@@ -867,8 +1009,8 @@ public partial class MainWindow : Window
                 }
                 break;
 
-            case string s when s == "Settings":
-                _viewModel.OpenSettingsCommand.Execute(null);
+            case string s when s == "GeneralSettings":
+                _viewModel.OpenContentTabCommand.Execute("GeneralSettings");
                 break;
         }
     }
@@ -894,6 +1036,17 @@ public partial class MainWindow : Window
                     return;
 
                 UpdateWindowHost(_viewModel.CurrentWindowHost);
+            });
+        }
+        else if (e.PropertyName == nameof(MainViewModel.ActiveContentKey))
+        {
+            // Content tab switched (e.g. Settings → Startup Settings)
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                if (_viewModel.IsContentTabActive)
+                {
+                    ShowContentTab(_viewModel.ActiveContentKey);
+                }
             });
         }
         else if (e.PropertyName == nameof(MainViewModel.IsContentTabActive))
@@ -1064,12 +1217,53 @@ public partial class MainWindow : Window
 
     private void ShowContentTab(string? contentKey)
     {
-        if (contentKey == "Settings")
+        UserControl? page = contentKey switch
         {
-            _settingsPage ??= App.GetService<SettingsPage>();
-            ContentTabContent.Content = _settingsPage;
+            "GeneralSettings" => _generalSettingsPage ??= App.GetService<GeneralSettingsPage>(),
+            "StartupSettings" => GetStartupSettingsPage(),
+            "QuickLaunchSettings" => GetQuickLaunchSettingsPage(),
+            "ProcessInfo" => GetProcessInfoPage(),
+            _ => null
+        };
+
+        if (page != null)
+        {
+            ContentTabContent.Content = page;
             ContentTabContainer.Visibility = Visibility.Visible;
         }
+    }
+
+    private StartupSettingsPage GetStartupSettingsPage()
+    {
+        if (_startupSettingsPage == null)
+        {
+            _startupSettingsPage = App.GetService<StartupSettingsPage>();
+        }
+        else
+        {
+            ((StartupSettingsViewModel)_startupSettingsPage.DataContext).Reload();
+        }
+        return _startupSettingsPage;
+    }
+
+    private QuickLaunchSettingsPage GetQuickLaunchSettingsPage()
+    {
+        if (_quickLaunchSettingsPage == null)
+        {
+            _quickLaunchSettingsPage = App.GetService<QuickLaunchSettingsPage>();
+        }
+        else
+        {
+            ((QuickLaunchSettingsViewModel)_quickLaunchSettingsPage.DataContext).Reload();
+        }
+        return _quickLaunchSettingsPage;
+    }
+
+    private ProcessInfoPage GetProcessInfoPage()
+    {
+        _processInfoPage ??= App.GetService<ProcessInfoPage>();
+        ((ProcessInfoViewModel)_processInfoPage.DataContext).Refresh();
+        return _processInfoPage;
     }
 
     #region Tile Layout

@@ -26,12 +26,18 @@ public partial class App : Application
         // ViewModels
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<WindowPickerViewModel>();
-        services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<GeneralSettingsViewModel>();
+        services.AddSingleton<StartupSettingsViewModel>();
+        services.AddSingleton<QuickLaunchSettingsViewModel>();
+        services.AddSingleton<ProcessInfoViewModel>();
         services.AddSingleton<CommandPaletteViewModel>();
 
         // Views
         services.AddSingleton<MainWindow>();
-        services.AddSingleton<Views.SettingsPage>();
+        services.AddSingleton<Views.GeneralSettingsPage>();
+        services.AddSingleton<Views.StartupSettingsPage>();
+        services.AddSingleton<Views.QuickLaunchSettingsPage>();
+        services.AddSingleton<Views.ProcessInfoPage>();
     }
 
     protected override async void OnStartup(StartupEventArgs e)

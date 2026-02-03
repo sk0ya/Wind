@@ -1,0 +1,109 @@
+<UserControl x:Class="Wind.Views.QuickLaunchSettingsPage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16,12,16,16">
+            <TextBlock Text="Quick Launch Apps" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="6" Padding="12,8" Margin="0,0,0,4">
+                <StackPanel>
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid>
+                            <ui:TextBox x:Name="QuickLaunchPathBox"
+                                       Text="{Binding NewQuickLaunchPath, UpdateSourceTrigger=PropertyChanged}"
+                                       PlaceholderText="command or path to .exe"
+                                       PreviewKeyDown="QuickLaunchPath_PreviewKeyDown"/>
+                            <Popup IsOpen="{Binding IsSuggestionsOpen}"
+                                   PlacementTarget="{Binding ElementName=QuickLaunchPathBox}"
+                                   Placement="Bottom"
+                                   StaysOpen="False"
+                                   Width="{Binding ActualWidth, ElementName=QuickLaunchPathBox}"
+                                   AllowsTransparency="True">
+                                <Border Background="{DynamicResource ApplicationBackgroundBrush}"
+                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="4"
+                                        Padding="0" MaxHeight="200">
+                                    <ListBox x:Name="SuggestionsList"
+                                             ItemsSource="{Binding PathSuggestions}"
+                                             SelectedItem="{Binding SelectedSuggestion}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             PreviewMouseLeftButtonUp="Suggestions_PreviewMouseLeftButtonUp">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" Padding="6,2"
+                                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon FolderOpen24}"
+                                  Command="{Binding BrowseQuickLaunchAppCommand}"
+                                  ToolTip="Browse..." Margin="4,0,0,0"/>
+                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Add24}"
+                                  Command="{Binding AddQuickLaunchAppCommand}"
+                                  ToolTip="Add" Margin="4,0,0,0"/>
+                    </Grid>
+
+                    <ListBox ItemsSource="{Binding QuickLaunchApps}"
+                             SelectedItem="{Binding SelectedQuickLaunchApp}"
+                             MinHeight="40" MaxHeight="200"
+                             Background="Transparent"
+                             BorderThickness="1"
+                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="2">
+                                    <ui:SymbolIcon Symbol="WindowConsole20" Margin="0,0,6,0"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <TextBlock Text="{Binding Path}" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="350"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Grid Margin="0,6,0,0"
+                          Visibility="{Binding SelectedQuickLaunchApp, Converter={StaticResource NotNullConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Name" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <ui:TextBox Grid.Column="1"
+                                   Text="{Binding SelectedQuickLaunchAppName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Delete24}"
+                                  Command="{Binding RemoveQuickLaunchAppCommand}"
+                                  ToolTip="Remove Selected" Margin="4,0,0,0"/>
+                        <TextBlock Grid.Row="1" Text="Args" VerticalAlignment="Center" Margin="0,4,8,0" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <ui:TextBox Grid.Row="1" Grid.Column="1" Margin="0,4,0,0"
+                                   Text="{Binding SelectedQuickLaunchAppArguments, UpdateSourceTrigger=PropertyChanged}"
+                                   PlaceholderText="e.g. --flag value"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

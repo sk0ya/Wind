@@ -65,7 +65,7 @@ public partial class CommandPaletteViewModel : ObservableObject
         {
             Items.Add(new CommandPaletteItem
             {
-                Name = tab.Title,
+                Name = tab.DisplayTitle,
                 Category = "Tab",
                 Description = "Switch to tab",
                 Tag = tab,
@@ -95,7 +95,7 @@ public partial class CommandPaletteViewModel : ObservableObject
             Name = "Settings",
             Category = "Action",
             Description = "Open settings",
-            Tag = "Settings",
+            Tag = "GeneralSettings",
             Icon = SymbolRegular.Settings24
         });
     }

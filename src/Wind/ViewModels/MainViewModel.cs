@@ -171,7 +171,21 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
-        _tabManager.AddContentTab("Settings", "Settings");
+        OpenContentTab("GeneralSettings");
+    }
+
+    [RelayCommand]
+    private void OpenContentTab(string contentKey)
+    {
+        var title = contentKey switch
+        {
+            "GeneralSettings" => "設定",
+            "StartupSettings" => "Startup設定",
+            "QuickLaunchSettings" => "QuickLaunch設定",
+            "ProcessInfo" => "プロセス情報",
+            _ => contentKey
+        };
+        _tabManager.AddContentTab(title, contentKey);
     }
 
     [RelayCommand]

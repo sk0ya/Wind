@@ -31,6 +31,9 @@ public partial class TabItem : ObservableObject
     [ObservableProperty]
     private bool _isLaunchedAtStartup;
 
+    [ObservableProperty]
+    private string? _customTitle;
+
     /// <summary>
     /// Key identifying the content type for content tabs (e.g. "Settings").
     /// Null for regular window tabs.
@@ -38,6 +41,18 @@ public partial class TabItem : ObservableObject
     public string? ContentKey { get; init; }
 
     public bool IsContentTab => ContentKey != null;
+
+    public string DisplayTitle => CustomTitle ?? Title;
+
+    partial void OnCustomTitleChanged(string? value)
+    {
+        OnPropertyChanged(nameof(DisplayTitle));
+    }
+
+    partial void OnTitleChanged(string value)
+    {
+        OnPropertyChanged(nameof(DisplayTitle));
+    }
 
     public TabItem()
     {

@@ -15,6 +15,7 @@ public class WindowInfo
     public string ProcessName { get; set; } = string.Empty;
     public int ProcessId { get; set; }
     public ImageSource? Icon { get; set; }
+    public string? ExecutablePath { get; set; }
 
     public static WindowInfo? FromHandle(IntPtr handle)
     {
@@ -26,6 +27,7 @@ public class WindowInfo
         NativeMethods.GetWindowThreadProcessId(handle, out uint processId);
 
         string processName = string.Empty;
+        string? executablePath = null;
         ImageSource? icon = null;
 
         try
@@ -38,6 +40,7 @@ public class WindowInfo
                 string? fileName = process.MainModule?.FileName;
                 if (!string.IsNullOrEmpty(fileName))
                 {
+                    executablePath = fileName;
                     icon = GetIconFromFile(fileName);
                 }
             }
@@ -57,7 +60,8 @@ public class WindowInfo
             Title = title,
             ProcessName = processName,
             ProcessId = (int)processId,
-            Icon = icon
+            Icon = icon,
+            ExecutablePath = executablePath
         };
     }
 

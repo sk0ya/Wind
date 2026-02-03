@@ -204,6 +204,34 @@ public class SettingsManager
         SaveSettings();
     }
 
+    public bool IsInStartupApplications(string? executablePath)
+    {
+        if (string.IsNullOrEmpty(executablePath)) return false;
+        return _settings.StartupApplications.Any(a =>
+            a.Path.Equals(executablePath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public bool IsInQuickLaunchApps(string? executablePath)
+    {
+        if (string.IsNullOrEmpty(executablePath)) return false;
+        return _settings.QuickLaunchApps.Any(a =>
+            a.Path.Equals(executablePath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void RemoveStartupApplicationByPath(string path)
+    {
+        var app = _settings.StartupApplications.FirstOrDefault(a =>
+            a.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
+        if (app != null) RemoveStartupApplication(app);
+    }
+
+    public void RemoveQuickLaunchAppByPath(string path)
+    {
+        var app = _settings.QuickLaunchApps.FirstOrDefault(a =>
+            a.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
+        if (app != null) RemoveQuickLaunchApp(app);
+    }
+
     public void SetTabHeaderPosition(string position)
     {
         _settings.TabHeaderPosition = position;

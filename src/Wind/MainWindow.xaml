@@ -132,10 +132,18 @@
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
                     Tag="{Binding}">
                 <Border.ContextMenu>
-                    <ContextMenu Tag="{Binding}">
+                    <ContextMenu Tag="{Binding}" Opened="TabContextMenu_Opened">
                         <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
                         <MenuItem Header="タイル解除" Click="StopTile_Click"
                                   Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
+                        <Separator/>
+                        <MenuItem Header="Startup に登録" Click="ToggleStartup_Click" Tag="{Binding}"/>
+                        <MenuItem Header="QuickLaunch に登録" Click="ToggleQuickLaunch_Click" Tag="{Binding}"/>
+                        <Separator/>
+                        <MenuItem Header="ファイルパスをコピー" Click="CopyExePath_Click" Tag="{Binding}"/>
+                        <MenuItem Header="エクスプローラーで開く" Click="OpenInExplorer_Click" Tag="{Binding}"/>
+                        <Separator/>
+                        <MenuItem Header="タブ名を変更" Click="RenameTab_Click" Tag="{Binding}"/>
                         <Separator/>
                         <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
                     </ContextMenu>
@@ -143,7 +151,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Image Source="{Binding Icon}" Width="16" Height="16"
                            Margin="0,0,6,0" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding Title}" MaxWidth="120"
+                    <TextBlock Text="{Binding DisplayTitle}" MaxWidth="120"
                                TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center"
                                FontSize="12"
@@ -183,10 +191,18 @@
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
                     Tag="{Binding}">
                 <Border.ContextMenu>
-                    <ContextMenu Tag="{Binding}">
+                    <ContextMenu Tag="{Binding}" Opened="TabContextMenu_Opened">
                         <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
                         <MenuItem Header="タイル解除" Click="StopTile_Click"
                                   Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
+                        <Separator/>
+                        <MenuItem Header="Startup に登録" Click="ToggleStartup_Click" Tag="{Binding}"/>
+                        <MenuItem Header="QuickLaunch に登録" Click="ToggleQuickLaunch_Click" Tag="{Binding}"/>
+                        <Separator/>
+                        <MenuItem Header="ファイルパスをコピー" Click="CopyExePath_Click" Tag="{Binding}"/>
+                        <MenuItem Header="エクスプローラーで開く" Click="OpenInExplorer_Click" Tag="{Binding}"/>
+                        <Separator/>
+                        <MenuItem Header="タブ名を変更" Click="RenameTab_Click" Tag="{Binding}"/>
                         <Separator/>
                         <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
                     </ContextMenu>
@@ -199,7 +215,7 @@
                     </Grid.ColumnDefinitions>
                     <Image Source="{Binding Icon}" Width="16" Height="16"
                            Margin="0,0,6,0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Title}" MaxWidth="140"
+                    <TextBlock Grid.Column="1" Text="{Binding DisplayTitle}" MaxWidth="140"
                                TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center"
                                FontSize="12"
@@ -241,16 +257,24 @@
                     HorizontalAlignment="Center"
                     Padding="8,6">
                 <Border.ContextMenu>
-                    <ContextMenu Tag="{Binding}">
+                    <ContextMenu Tag="{Binding}" Opened="TabContextMenu_Opened">
                         <MenuItem Header="タイル表示" Click="TileSelectedTabs_Click" Tag="{Binding}"/>
                         <MenuItem Header="タイル解除" Click="StopTile_Click"
                                   Visibility="{Binding IsTiled, Converter={StaticResource BoolToVisibility}}"/>
+                        <Separator/>
+                        <MenuItem Header="Startup に登録" Click="ToggleStartup_Click" Tag="{Binding}"/>
+                        <MenuItem Header="QuickLaunch に登録" Click="ToggleQuickLaunch_Click" Tag="{Binding}"/>
+                        <Separator/>
+                        <MenuItem Header="ファイルパスをコピー" Click="CopyExePath_Click" Tag="{Binding}"/>
+                        <MenuItem Header="エクスプローラーで開く" Click="OpenInExplorer_Click" Tag="{Binding}"/>
+                        <Separator/>
+                        <MenuItem Header="タブ名を変更" Click="RenameTab_Click" Tag="{Binding}"/>
                         <Separator/>
                         <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
                     </ContextMenu>
                 </Border.ContextMenu>
                 <Image Source="{Binding Icon}" Width="16" Height="16"
-                       VerticalAlignment="Center" ToolTip="{Binding Title}"/>
+                       VerticalAlignment="Center" ToolTip="{Binding DisplayTitle}"/>
             </Border>
         </DataTemplate>
 
@@ -311,8 +335,33 @@
 
                 <!-- Window Control Buttons -->
                 <StackPanel x:Name="WindowControlsPanel" Orientation="Horizontal">
-                    <Button x:Name="SettingsButton" Style="{StaticResource TitleBarButtonStyle}" Click="SettingsButton_Click" ToolTip="Settings">
-                        <ui:SymbolIcon Symbol="Settings24" FontSize="12"/>
+                    <Button x:Name="MenuButton" Style="{StaticResource TitleBarButtonStyle}" Click="MenuButton_Click" ToolTip="Menu">
+                        <ui:SymbolIcon Symbol="Navigation24" FontSize="12"/>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="MainMenu">
+                                <MenuItem Header="設定" Click="OpenGeneralSettings_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Settings24" FontSize="14"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="プロセス情報" Click="OpenProcessInfo_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Info24" FontSize="14"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Startup設定" Click="OpenStartupSettings_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Play24" FontSize="14"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="QuickLaunch設定" Click="OpenQuickLaunchSettings_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Flash24" FontSize="14"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                     </Button>
                     <Button x:Name="MinimizeButton" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click">
                         <ui:SymbolIcon Symbol="Subtract24" FontSize="10"/>
