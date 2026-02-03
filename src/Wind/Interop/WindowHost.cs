@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace Wind.Interop;
 
@@ -16,6 +17,7 @@ public class WindowHost : HwndHost
 
     private const string HostClassName = "WindWindowHost";
     private static bool _classRegistered;
+    private static IntPtr _backgroundBrush = IntPtr.Zero;
 
     private const int WM_PARENTNOTIFY = 0x0210;
     private const int WM_DESTROY = 0x0002;
@@ -50,6 +52,12 @@ public class WindowHost : HwndHost
 
     [DllImport("gdi32.dll")]
     private static extern IntPtr GetStockObject(int fnObject);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateSolidBrush(uint crColor);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr hObject);
 
     private const int NULL_BRUSH = 5;
 
@@ -112,10 +120,33 @@ public class WindowHost : HwndHost
 
     private bool _isChromium;
 
+    // Background color property
+    private Color _backgroundColor = Colors.Black;
+    public Color BackgroundColor
+    {
+        get => _backgroundColor;
+        set
+        {
+            if (_backgroundColor != value)
+            {
+                _backgroundColor = value;
+                // Trigger repaint if host window exists
+                if (_hwndHost != IntPtr.Zero)
+                {
+                    InvalidateRect(_hwndHost, IntPtr.Zero, true);
+                }
+            }
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
+
     public WindowHost(IntPtr windowHandle)
     {
         _hostedWindowHandle = windowHandle;
         _isChromium = IsChromiumWindow(windowHandle);
+        _currentInstance = this; // Store current instance for WndProc access
 
         // Save original state immediately for later restoration.
         _originalStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE);
@@ -145,6 +176,12 @@ public class WindowHost : HwndHost
 
         _wndProcDelegate = WndProc;
 
+        // Create default background brush (black)
+        if (_backgroundBrush == IntPtr.Zero)
+        {
+            _backgroundBrush = CreateSolidBrush(0x000000); // Black
+        }
+
         var wndClass = new WNDCLASS
         {
             style = 0,
@@ -154,7 +191,7 @@ public class WindowHost : HwndHost
             hInstance = GetModuleHandle(null),
             hIcon = IntPtr.Zero,
             hCursor = IntPtr.Zero,
-            hbrBackground = GetStockObject(NULL_BRUSH),
+            hbrBackground = _backgroundBrush,
             lpszMenuName = null,
             lpszClassName = HostClassName
         };
@@ -163,8 +200,73 @@ public class WindowHost : HwndHost
         _classRegistered = true;
     }
 
+    private static WindowHost? _currentInstance;
+
+    private static void UpdateBackgroundBrush()
+    {
+        // This method will be called when background color changes
+        // Since the window class is already registered, we need to handle
+        // background painting in WndProc instead
+    }
+
+    private static WindowHost? GetWindowHost(IntPtr hWnd)
+    {
+        // This is a simplified approach - in a real implementation,
+        // you might want to store a mapping of hWnd to WindowHost instances
+        // For now, we'll use a static approach
+        return _currentInstance;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    private static extern int FillRect(IntPtr hDC, ref RECT lprc, IntPtr hbr);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    private static void FillBackground(IntPtr hdc, IntPtr hWnd, Color color)
+    {
+        GetClientRect(hWnd, out RECT rect);
+        
+        // Convert WPF Color to Win32 COLORREF (BGR format)
+        uint colorRef = (uint)((color.B << 16) | (color.G << 8) | color.R);
+        IntPtr brush = CreateSolidBrush(colorRef);
+        
+        if (brush != IntPtr.Zero)
+        {
+            FillRect(hdc, ref rect, brush);
+            DeleteObject(brush);
+        }
+    }
+
     private static IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
+        const uint WM_ERASEBKGND = 0x0014;
+
+        if (msg == WM_ERASEBKGND)
+        {
+            // Handle background erasing to fill with our background color
+            var hdc = wParam;
+            if (hdc != IntPtr.Zero)
+            {
+                // Get the window instance to access background color
+                var windowHost = GetWindowHost(hWnd);
+                if (windowHost != null)
+                {
+                    FillBackground(hdc, hWnd, windowHost._backgroundColor);
+                    return new IntPtr(1); // Return non-zero to indicate we handled it
+                }
+            }
+        }
+
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
@@ -376,6 +478,12 @@ public class WindowHost : HwndHost
 
     protected override void DestroyWindowCore(HandleRef hwnd)
     {
+        // Clear current instance reference
+        if (_currentInstance == this)
+        {
+            _currentInstance = null;
+        }
+
         // Detach the hosted window before destroying the host HWND.
         // If the hosted window is still a child of _hwndHost when DestroyWindow
         // is called, Windows will cascade-destroy it, killing the hosted process's window.
@@ -402,6 +510,12 @@ public class WindowHost : HwndHost
     public void ReleaseWindow()
     {
         if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
+
+        // Clear current instance reference
+        if (_currentInstance == this)
+        {
+            _currentInstance = null;
+        }
 
         // Remove event hook before releasing
         RemoveWinEventHook();
