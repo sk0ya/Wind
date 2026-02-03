@@ -8,6 +8,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
+                <ResourceDictionary Source="Styles/TabStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <converters:NotNullConverter x:Key="NotNullConverter"/>
             <converters:StringEqualsConverter x:Key="StringEqualsConverter"/>

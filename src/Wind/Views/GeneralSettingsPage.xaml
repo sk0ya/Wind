@@ -35,13 +35,13 @@
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                         <RadioButton Content="Release" GroupName="CloseWindowsOnExit" Margin="0,0,8,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding CloseWindowsOnExit, Converter={StaticResource StringEqualsConverter}, ConverterParameter=None}"/>
                         <RadioButton Content="Close all" GroupName="CloseWindowsOnExit" Margin="0,0,8,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding CloseWindowsOnExit, Converter={StaticResource StringEqualsConverter}, ConverterParameter=All}"/>
                         <RadioButton Content="Startup only" GroupName="CloseWindowsOnExit"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding CloseWindowsOnExit, Converter={StaticResource StringEqualsConverter}, ConverterParameter=StartupOnly}"/>
                     </StackPanel>
                 </Grid>
@@ -58,13 +58,13 @@
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                         <RadioButton Content="アプリを閉じる" GroupName="EmbedCloseAction" Margin="0,0,8,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding EmbedCloseAction, Converter={StaticResource StringEqualsConverter}, ConverterParameter=CloseApp}"/>
                         <RadioButton Content="埋め込み解除" GroupName="EmbedCloseAction" Margin="0,0,8,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding EmbedCloseAction, Converter={StaticResource StringEqualsConverter}, ConverterParameter=ReleaseEmbed}"/>
                         <RadioButton Content="Windを閉じる" GroupName="EmbedCloseAction"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding EmbedCloseAction, Converter={StaticResource StringEqualsConverter}, ConverterParameter=CloseWind}"/>
                     </StackPanel>
                 </Grid>
@@ -85,10 +85,10 @@
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                         <RadioButton Content="Light" GroupName="Theme" Margin="0,0,12,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Light}"/>
                         <RadioButton Content="Dark" GroupName="Theme"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Dark}"/>
                     </StackPanel>
                 </Grid>
@@ -105,16 +105,16 @@
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                         <RadioButton Content="Top" GroupName="TabPosition" Margin="0,0,8,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Top}"/>
                         <RadioButton Content="Bottom" GroupName="TabPosition" Margin="0,0,8,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Bottom}"/>
                         <RadioButton Content="Left" GroupName="TabPosition" Margin="0,0,8,0"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Left}"/>
                         <RadioButton Content="Right" GroupName="TabPosition"
-                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                     Style="{StaticResource AccentRadioButtonStyle}"
                                      IsChecked="{Binding TabHeaderPosition, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Right}"/>
                     </StackPanel>
                 </Grid>
