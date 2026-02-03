@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private bool _isDragging;
     private readonly List<WindowHost> _tiledHosts = new();
     private Views.GeneralSettingsPage? _generalSettingsPage;
+    private Views.HotkeySettingsPage? _hotkeySettingsPage;
     private Views.StartupSettingsPage? _startupSettingsPage;
     private Views.QuickLaunchSettingsPage? _quickLaunchSettingsPage;
     private Views.ProcessInfoPage? _processInfoPage;
@@ -757,6 +758,11 @@ public partial class MainWindow : Window
         _viewModel.OpenContentTabCommand.Execute("GeneralSettings");
     }
 
+    private void OpenHotkeySettings_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenContentTabCommand.Execute("HotkeySettings");
+    }
+
     private void OpenProcessInfo_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.OpenContentTabCommand.Execute("ProcessInfo");
@@ -1220,6 +1226,7 @@ public partial class MainWindow : Window
         UserControl? page = contentKey switch
         {
             "GeneralSettings" => _generalSettingsPage ??= App.GetService<GeneralSettingsPage>(),
+            "HotkeySettings" => _hotkeySettingsPage ??= App.GetService<HotkeySettingsPage>(),
             "StartupSettings" => GetStartupSettingsPage(),
             "QuickLaunchSettings" => GetQuickLaunchSettingsPage(),
             "ProcessInfo" => GetProcessInfoPage(),

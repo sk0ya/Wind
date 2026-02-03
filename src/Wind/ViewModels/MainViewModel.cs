@@ -180,6 +180,7 @@ public partial class MainViewModel : ObservableObject
         var title = contentKey switch
         {
             "GeneralSettings" => "設定",
+            "HotkeySettings" => "HotKey設定",
             "StartupSettings" => "Startup設定",
             "QuickLaunchSettings" => "QuickLaunch設定",
             "ProcessInfo" => "プロセス情報",

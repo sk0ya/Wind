@@ -27,6 +27,7 @@ public partial class App : Application
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<WindowPickerViewModel>();
         services.AddSingleton<GeneralSettingsViewModel>();
+        services.AddSingleton<HotkeySettingsViewModel>();
         services.AddSingleton<StartupSettingsViewModel>();
         services.AddSingleton<QuickLaunchSettingsViewModel>();
         services.AddSingleton<ProcessInfoViewModel>();
@@ -35,6 +36,7 @@ public partial class App : Application
         // Views
         services.AddSingleton<MainWindow>();
         services.AddSingleton<Views.GeneralSettingsPage>();
+        services.AddSingleton<Views.HotkeySettingsPage>();
         services.AddSingleton<Views.StartupSettingsPage>();
         services.AddSingleton<Views.QuickLaunchSettingsPage>();
         services.AddSingleton<Views.ProcessInfoPage>();
