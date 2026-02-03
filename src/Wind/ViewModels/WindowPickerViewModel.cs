@@ -402,11 +402,14 @@ public partial class WindowPickerViewModel : ObservableObject
 
             if (newWindow == null) return;
 
-            RefreshWindowList();
-            var windowInfo = _availableWindows.FirstOrDefault(w => w.Handle == newWindow.Handle);
-            if (windowInfo != null)
+            if (app.ShouldEmbed)
             {
-                WindowSelected?.Invoke(this, windowInfo);
+                RefreshWindowList();
+                var windowInfo = _availableWindows.FirstOrDefault(w => w.Handle == newWindow.Handle);
+                if (windowInfo != null)
+                {
+                    WindowSelected?.Invoke(this, windowInfo);
+                }
             }
         }
         catch (OperationCanceledException)

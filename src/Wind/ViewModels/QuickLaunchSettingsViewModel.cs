@@ -56,6 +56,20 @@ public partial class QuickLaunchAppItem : ObservableObject
             }
         }
     }
+
+    public bool ShouldEmbed
+    {
+        get => _app.ShouldEmbed;
+        set
+        {
+            if (_app.ShouldEmbed != value)
+            {
+                _app.ShouldEmbed = value;
+                OnPropertyChanged();
+                _settingsManager.SaveQuickLaunchApp();
+            }
+        }
+    }
 }
 
 public partial class QuickLaunchSettingsViewModel : ObservableObject
