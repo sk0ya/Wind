@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Wind.Interop;
 using Wind.Models;
@@ -122,6 +123,18 @@ public class TabManager
 
         var tab = new TabItem { ContentKey = contentKey };
         tab.Title = title;
+        
+        // Set Wind icon for content tabs
+        try
+        {
+            var iconUri = new Uri("pack://application:,,,/Assets/Wind.ico");
+            tab.Icon = new System.Windows.Media.Imaging.BitmapImage(iconUri);
+        }
+        catch
+        {
+            // Fallback if icon loading fails
+            tab.Icon = null;
+        }
 
         Tabs.Add(tab);
         TabAdded?.Invoke(this, tab);
