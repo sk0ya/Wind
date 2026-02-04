@@ -152,7 +152,7 @@ public partial class WindowPickerViewModel : ObservableObject
         }
     }
 
-    private enum QuickLaunchType { Url, Folder, File, GuiApp, ConsoleApp }
+    private enum QuickLaunchType { Url, Folder, File, GuiApp, ConsoleApp, BatchScript }
 
     /// <summary>
     /// Resolve a bare command name (e.g. "code", "cmd") against PATH
@@ -205,58 +205,6 @@ public partial class WindowPickerViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Parse a .cmd/.bat script to find the first .exe it references,
-    /// resolve %~dp0 relative to the script's directory, then check PE subsystem.
-    /// Falls back to GuiApp if no exe reference is found.
-    /// </summary>
-    private static QuickLaunchType ClassifyScript(string scriptPath)
-    {
-        try
-        {
-            var scriptDir = Path.GetDirectoryName(scriptPath) ?? "";
-            var content = System.IO.File.ReadAllText(scriptPath);
-
-            // Match patterns like:  "...something.exe"  or  ...something.exe followed by space/quote/EOL
-            var matches = System.Text.RegularExpressions.Regex.Matches(
-                content,
-                @"[""']?([^""'\r\n]*?\.exe)\b",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-            foreach (System.Text.RegularExpressions.Match m in matches)
-            {
-                var raw = m.Groups[1].Value.Trim();
-
-                // Expand %~dp0 → script's own directory
-                raw = System.Text.RegularExpressions.Regex.Replace(
-                    raw, @"%~dp0\\?", scriptDir + "\\",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-                // Expand %dp0% → script's own directory (SET dp0=%~dp0 pattern)
-                raw = System.Text.RegularExpressions.Regex.Replace(
-                    raw, @"%dp0%\\?", scriptDir + "\\",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-                // Try as full path first
-                if (Path.IsPathFullyQualified(raw) && System.IO.File.Exists(raw))
-                    return IsConsoleSubsystem(raw) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
-
-                // Try resolving bare exe name (e.g. "node") from PATH
-                var name = Path.GetFileNameWithoutExtension(raw);
-                var resolved = ResolveFromPath(name);
-                if (resolved != null)
-                    return IsConsoleSubsystem(resolved) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
-            }
-        }
-        catch
-        {
-            // If we can't read/parse, fall through
-        }
-
-        // Default: assume GUI (suppress console flash)
-        return QuickLaunchType.GuiApp;
-    }
-
     private static QuickLaunchType DetectLaunchType(string path)
     {
         // URL: http(s)://...
@@ -276,7 +224,7 @@ public partial class WindowPickerViewModel : ObservableObject
                 if (ext is ".exe" or ".com")
                     return IsConsoleSubsystem(path) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
                 if (ext is ".cmd" or ".bat")
-                    return ClassifyScript(path);
+                    return QuickLaunchType.BatchScript;
                 return QuickLaunchType.File;
             }
 
@@ -289,7 +237,7 @@ public partial class WindowPickerViewModel : ObservableObject
         {
             var ext = Path.GetExtension(resolved).ToLowerInvariant();
             if (ext is ".cmd" or ".bat")
-                return ClassifyScript(resolved);
+                return QuickLaunchType.BatchScript;
             return IsConsoleSubsystem(resolved) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
         }
 
@@ -326,6 +274,15 @@ public partial class WindowPickerViewModel : ObservableObject
 
             case QuickLaunchType.ConsoleApp:
                 // CUI app — UseShellExecute so the OS allocates a console window
+                return new ProcessStartInfo
+                {
+                    FileName = app.Path,
+                    Arguments = app.Arguments,
+                    UseShellExecute = true
+                };
+
+            case QuickLaunchType.BatchScript:
+                // Batch script — launch with shell to show console window (no embedding)
                 return new ProcessStartInfo
                 {
                     FileName = app.Path,
@@ -386,6 +343,14 @@ public partial class WindowPickerViewModel : ObservableObject
             var startInfo = BuildStartInfo(app, type);
 
             Process.Start(startInfo);
+
+            // Batch scripts are never embedded — just launch and close picker
+            if (type == QuickLaunchType.BatchScript)
+            {
+                IsLaunching = false;
+                Cancelled?.Invoke(this, EventArgs.Empty);
+                return;
+            }
 
             // Poll for a new window that didn't exist before
             WindowInfo? newWindow = null;
