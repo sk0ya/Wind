@@ -855,11 +855,20 @@ public partial class MainWindow : Window
                     item.Visibility = Visibility.Collapsed;
                 }
             }
-            else if (header is "ファイルパスをコピー" or "エクスプローラーで開く" or "タブ名を変更")
+            else if (header is "ファイルパスをコピー" or "エクスプローラーで開く" or "タブ名を変更" or "埋め込み解除")
             {
                 item.Visibility = isWindowTab ? Visibility.Visible : Visibility.Collapsed;
             }
         }
+    }
+
+    private void ReleaseEmbed_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement el || el.Tag is not Models.TabItem tab) return;
+        if (tab.IsContentTab) return;
+
+        _tabManager.RemoveTab(tab);
+        _viewModel.StatusMessage = $"埋め込み解除: {tab.DisplayTitle}";
     }
 
     private void ToggleStartup_Click(object sender, RoutedEventArgs e)
