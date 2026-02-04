@@ -47,15 +47,10 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Apply saved theme
+        // Apply dark theme as base
         var settingsManager = _serviceProvider.GetRequiredService<SettingsManager>();
         var settings = settingsManager.Settings;
-        var wpfuiTheme = settings.Theme switch
-        {
-            "Light" => Wpf.Ui.Appearance.ApplicationTheme.Light,
-            _ => Wpf.Ui.Appearance.ApplicationTheme.Dark
-        };
-        Wpf.Ui.Appearance.ApplicationThemeManager.Apply(wpfuiTheme);
+        Wpf.Ui.Appearance.ApplicationThemeManager.Apply(Wpf.Ui.Appearance.ApplicationTheme.Dark);
 
         // Apply accent color
         if (settings.UseSystemAccent)
@@ -67,7 +62,7 @@ public partial class App : Application
             try
             {
                 var color = (Color)ColorConverter.ConvertFromString(settings.AccentColor);
-                Wpf.Ui.Appearance.ApplicationAccentColorManager.Apply(color, wpfuiTheme);
+                Wpf.Ui.Appearance.ApplicationAccentColorManager.Apply(color, Wpf.Ui.Appearance.ApplicationTheme.Dark);
             }
             catch
             {

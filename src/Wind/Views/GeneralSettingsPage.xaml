@@ -81,26 +81,6 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Theme" VerticalAlignment="Center" Margin="0,0,16,0"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <RadioButton Content="Light" GroupName="Theme" Margin="0,0,12,0"
-                                     Style="{StaticResource AccentRadioButtonStyle}"
-                                     IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Light}"/>
-                        <RadioButton Content="Dark" GroupName="Theme"
-                                     Style="{StaticResource AccentRadioButtonStyle}"
-                                     IsChecked="{Binding SelectedTheme, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Dark}"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
-                    CornerRadius="6" Padding="12,8" Margin="0,0,0,4">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
                     <TextBlock Text="Tab Position" VerticalAlignment="Center" Margin="0,0,16,0"
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
