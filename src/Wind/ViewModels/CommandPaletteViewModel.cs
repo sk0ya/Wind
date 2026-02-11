@@ -99,6 +99,66 @@ public partial class CommandPaletteViewModel : ObservableObject
             Tag = "GeneralSettings",
             Icon = SymbolRegular.Settings24
         });
+
+        // Window management actions
+        Items.Add(new CommandPaletteItem
+        {
+            Name = "ウィンドウを閉じる",
+            Category = "Window",
+            Description = "Close Wind",
+            Tag = "WindowClose",
+            Icon = SymbolRegular.Dismiss24
+        });
+        Items.Add(new CommandPaletteItem
+        {
+            Name = "ウィンドウを最小化",
+            Category = "Window",
+            Description = "Minimize window",
+            Tag = "WindowMinimize",
+            Icon = SymbolRegular.Subtract24
+        });
+        Items.Add(new CommandPaletteItem
+        {
+            Name = "ウィンドウを最大化 / 元に戻す",
+            Category = "Window",
+            Description = "Maximize or restore window",
+            Tag = "WindowMaximize",
+            Icon = SymbolRegular.Maximize24
+        });
+
+        // Tab bar collapse/expand (vertical tab bar only)
+        if (_settingsManager.Settings.TabHeaderPosition is "Left" or "Right")
+        {
+            Items.Add(new CommandPaletteItem
+            {
+                Name = "タブバーの折りたたみ / 解除",
+                Category = "Action",
+                Description = "Toggle tab bar collapse",
+                Tag = "TabBarToggleCollapse",
+                Icon = SymbolRegular.PanelLeftContract24
+            });
+        }
+
+        // Group expand/collapse
+        if (_tabManager.Groups.Count > 0)
+        {
+            Items.Add(new CommandPaletteItem
+            {
+                Name = "全グループを展開",
+                Category = "Group",
+                Description = "Expand all tab groups",
+                Tag = "GroupExpandAll",
+                Icon = SymbolRegular.ChevronDown24
+            });
+            Items.Add(new CommandPaletteItem
+            {
+                Name = "全グループを折りたたみ",
+                Category = "Group",
+                Description = "Collapse all tab groups",
+                Tag = "GroupCollapseAll",
+                Icon = SymbolRegular.ChevronRight24
+            });
+        }
     }
 
     partial void OnSearchTextChanged(string value)

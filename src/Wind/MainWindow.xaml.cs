@@ -1201,8 +1201,38 @@ public partial class MainWindow : Window
                 }
                 break;
 
-            case string s when s == "GeneralSettings":
+            case string s:
+                HandleStringCommand(s);
+                break;
+        }
+    }
+
+    private void HandleStringCommand(string command)
+    {
+        switch (command)
+        {
+            case "GeneralSettings":
                 _viewModel.OpenContentTabCommand.Execute("GeneralSettings");
+                break;
+            case "WindowClose":
+                Close();
+                break;
+            case "WindowMinimize":
+                WindowState = WindowState.Minimized;
+                break;
+            case "WindowMaximize":
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                break;
+            case "TabBarToggleCollapse":
+                ToggleTabBarCollapsed();
+                break;
+            case "GroupExpandAll":
+                foreach (var group in _tabManager.Groups)
+                    group.IsExpanded = true;
+                break;
+            case "GroupCollapseAll":
+                foreach (var group in _tabManager.Groups)
+                    group.IsExpanded = false;
                 break;
         }
     }
