@@ -502,6 +502,9 @@ public partial class MainWindow : Window
 
     private void MainWindow_Activated(object? sender, EventArgs e)
     {
+        // Re-establish backdrop Z-order directly behind Wind
+        UpdateBackdropPosition();
+
         // When Wind window is activated, forward focus to the embedded window
         // only if the mouse is over the content area (not the tab bar).
         Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
