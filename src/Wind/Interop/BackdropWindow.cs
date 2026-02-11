@@ -246,7 +246,7 @@ public class BackdropWindow
     {
         if (_hwnd == IntPtr.Zero || !IsWindowVisible(_hwnd)) return;
 
-        SetWindowPos(_hwnd, ownerHwnd, x, y, width, height, SWP_NOACTIVATE);
+        SetWindowPos(_hwnd, ownerHwnd, x + 1, y + 1, width - 1, height - 1, SWP_NOACTIVATE);
     }
 
     /// <summary>
