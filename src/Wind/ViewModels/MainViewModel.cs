@@ -63,6 +63,18 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string? _activeContentKey;
 
+    /// <summary>
+    /// True when the active tab is a web tab.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isWebTabActive;
+
+    /// <summary>
+    /// The Id of the active web tab, or null.
+    /// </summary>
+    [ObservableProperty]
+    private Guid? _activeWebTabId;
+
     public MainViewModel(
         WindowManager windowManager,
         TabManager tabManager,
@@ -92,6 +104,18 @@ public partial class MainViewModel : ObservableObject
             CurrentWindowHost = null;
             IsContentTabActive = true;
             ActiveContentKey = tab.ContentKey;
+            IsWebTabActive = false;
+            ActiveWebTabId = null;
+        }
+        else if (tab != null && tab.IsWebTab)
+        {
+            // Web tab
+            IsTileVisible = false;
+            CurrentWindowHost = null;
+            IsContentTabActive = false;
+            ActiveContentKey = null;
+            IsWebTabActive = true;
+            ActiveWebTabId = tab.Id;
         }
         else if (IsTiled && tab != null && tab.IsTiled)
         {
@@ -100,6 +124,8 @@ public partial class MainViewModel : ObservableObject
             CurrentWindowHost = null;
             IsContentTabActive = false;
             ActiveContentKey = null;
+            IsWebTabActive = false;
+            ActiveWebTabId = null;
         }
         else
         {
@@ -108,6 +134,8 @@ public partial class MainViewModel : ObservableObject
             CurrentWindowHost = tab != null ? _tabManager.GetWindowHost(tab) : null;
             IsContentTabActive = false;
             ActiveContentKey = null;
+            IsWebTabActive = false;
+            ActiveWebTabId = null;
         }
     }
 
@@ -187,6 +215,13 @@ public partial class MainViewModel : ObservableObject
             _ => contentKey
         };
         _tabManager.AddContentTab(title, contentKey);
+    }
+
+    [RelayCommand]
+    private void OpenWebTab(string? url)
+    {
+        var targetUrl = string.IsNullOrWhiteSpace(url) ? "https://www.google.com" : url;
+        _tabManager.AddWebTab(targetUrl);
     }
 
     [RelayCommand]

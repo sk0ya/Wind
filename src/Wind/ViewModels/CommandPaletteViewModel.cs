@@ -6,6 +6,7 @@ using System.Windows.Data;
 using Wind.Models;
 using Wind.Services;
 using Wpf.Ui.Controls;
+using static Wind.Services.SettingsManager;
 
 namespace Wind.ViewModels;
 
@@ -56,7 +57,7 @@ public partial class CommandPaletteViewModel : ObservableObject
                 Category = "QuickLaunch",
                 Description = app.Path,
                 Tag = app,
-                Icon = SymbolRegular.WindowConsole20
+                Icon = IsUrl(app.Path) ? SymbolRegular.Globe24 : SymbolRegular.WindowConsole20
             });
         }
 

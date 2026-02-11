@@ -42,6 +42,15 @@ public partial class TabItem : ObservableObject
 
     public bool IsContentTab => ContentKey != null;
 
+    /// <summary>
+    /// URL for web tabs. Null for regular window tabs and content tabs.
+    /// Updated as the user navigates within the tab.
+    /// </summary>
+    [ObservableProperty]
+    private string? _webUrl;
+
+    public bool IsWebTab => WebUrl != null;
+
     public string DisplayTitle => CustomTitle ?? Title;
 
     partial void OnCustomTitleChanged(string? value)

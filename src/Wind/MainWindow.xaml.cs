@@ -32,6 +32,8 @@ public partial class MainWindow : Window
     private WindowResizeHelper? _resizeHelper;
     private bool _isTabBarCollapsed;
     private readonly BackdropWindow _backdropWindow = new();
+    private readonly Dictionary<Guid, Views.WebTabControl> _webTabControls = new();
+    private Guid? _currentWebTabId;
 
     public MainWindow()
     {
@@ -65,6 +67,12 @@ public partial class MainWindow : Window
         {
             _viewModel.CloseWindowPickerCommand.Execute(null);
             RestoreEmbeddedWindow();
+        };
+        pickerVm.WebTabRequested += (s, url) =>
+        {
+            _viewModel.CloseWindowPickerCommand.Execute(null);
+            RestoreEmbeddedWindow();
+            _viewModel.OpenWebTabCommand.Execute(url);
         };
 
         // Wire up command palette events
@@ -662,6 +670,14 @@ public partial class MainWindow : Window
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _settingsManager.TabHeaderPositionChanged -= OnTabHeaderPositionChanged;
+
+        // Dispose all web tab controls
+        foreach (var control in _webTabControls.Values)
+        {
+            control.Dispose();
+        }
+        _webTabControls.Clear();
+
         _backdropWindow.Destroy();
         _resizeHelper?.Dispose();
         _resizeHelper = null;
@@ -873,6 +889,11 @@ public partial class MainWindow : Window
         _viewModel.OpenContentTabCommand.Execute("QuickLaunchSettings");
     }
 
+    private void OpenWebTab_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenWebTabCommand.Execute(null);
+    }
+
     private void TabItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e == null) throw new ArgumentNullException(nameof(e));
@@ -937,8 +958,9 @@ public partial class MainWindow : Window
     {
         if (sender is not ContextMenu menu || menu.Tag is not Models.TabItem tab) return;
 
-        bool isWindowTab = !tab.IsContentTab && tab.Window != null;
+        bool isWindowTab = !tab.IsContentTab && !tab.IsWebTab && tab.Window != null;
         string? exePath = tab.Window?.ExecutablePath;
+        string? path = tab.IsWebTab ? tab.WebUrl : exePath;
 
         foreach (var item in menu.Items.OfType<MenuItem>())
         {
@@ -946,10 +968,10 @@ public partial class MainWindow : Window
 
             if (header.StartsWith("Startup"))
             {
-                if (isWindowTab && !string.IsNullOrEmpty(exePath))
+                if (!string.IsNullOrEmpty(path) && (isWindowTab || tab.IsWebTab))
                 {
                     item.Visibility = Visibility.Visible;
-                    bool isRegistered = _settingsManager.IsInStartupApplications(exePath);
+                    bool isRegistered = _settingsManager.IsInStartupApplications(path);
                     item.Header = isRegistered ? "Startup から削除" : "Startup に登録";
                 }
                 else
@@ -959,10 +981,10 @@ public partial class MainWindow : Window
             }
             else if (header.StartsWith("QuickLaunch"))
             {
-                if (isWindowTab && !string.IsNullOrEmpty(exePath))
+                if (!string.IsNullOrEmpty(path) && (isWindowTab || tab.IsWebTab))
                 {
                     item.Visibility = Visibility.Visible;
-                    bool isRegistered = _settingsManager.IsInQuickLaunchApps(exePath);
+                    bool isRegistered = _settingsManager.IsInQuickLaunchApps(path);
                     item.Header = isRegistered ? "QuickLaunch から削除" : "QuickLaunch に登録";
                 }
                 else
@@ -980,7 +1002,7 @@ public partial class MainWindow : Window
     private void ReleaseEmbed_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement el || el.Tag is not Models.TabItem tab) return;
-        if (tab.IsContentTab) return;
+        if (tab.IsContentTab || tab.IsWebTab) return;
 
         _tabManager.RemoveTab(tab);
         _viewModel.StatusMessage = $"埋め込み解除: {tab.DisplayTitle}";
@@ -989,17 +1011,17 @@ public partial class MainWindow : Window
     private void ToggleStartup_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement el || el.Tag is not Models.TabItem tab) return;
-        var exePath = tab.Window?.ExecutablePath;
-        if (string.IsNullOrEmpty(exePath)) return;
+        var path = tab.IsWebTab ? tab.WebUrl : tab.Window?.ExecutablePath;
+        if (string.IsNullOrEmpty(path)) return;
 
-        if (_settingsManager.IsInStartupApplications(exePath))
+        if (_settingsManager.IsInStartupApplications(path))
         {
-            _settingsManager.RemoveStartupApplicationByPath(exePath);
+            _settingsManager.RemoveStartupApplicationByPath(path);
             _viewModel.StatusMessage = $"Startup から削除: {tab.DisplayTitle}";
         }
         else
         {
-            _settingsManager.AddStartupApplication(exePath, "", tab.DisplayTitle);
+            _settingsManager.AddStartupApplication(path, "", tab.DisplayTitle);
             _viewModel.StatusMessage = $"Startup に登録: {tab.DisplayTitle}";
         }
     }
@@ -1007,17 +1029,17 @@ public partial class MainWindow : Window
     private void ToggleQuickLaunch_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement el || el.Tag is not Models.TabItem tab) return;
-        var exePath = tab.Window?.ExecutablePath;
-        if (string.IsNullOrEmpty(exePath)) return;
+        var path = tab.IsWebTab ? tab.WebUrl : tab.Window?.ExecutablePath;
+        if (string.IsNullOrEmpty(path)) return;
 
-        if (_settingsManager.IsInQuickLaunchApps(exePath))
+        if (_settingsManager.IsInQuickLaunchApps(path))
         {
-            _settingsManager.RemoveQuickLaunchAppByPath(exePath);
+            _settingsManager.RemoveQuickLaunchAppByPath(path);
             _viewModel.StatusMessage = $"QuickLaunch から削除: {tab.DisplayTitle}";
         }
         else
         {
-            _settingsManager.AddQuickLaunchApp(exePath, "", tab.DisplayTitle);
+            _settingsManager.AddQuickLaunchApp(path, "", tab.DisplayTitle);
             _viewModel.StatusMessage = $"QuickLaunch に登録: {tab.DisplayTitle}";
         }
     }
@@ -1062,11 +1084,16 @@ public partial class MainWindow : Window
         _viewModel.OpenWindowPickerCommand.Execute(null);
         _resizeHelper?.SetVisible(false);
         UpdateBackdropVisibility();
-        // Hide embedded window(s) while picker is open
+        // Hide embedded window(s) / web tab while picker is open
         if (_viewModel.IsTileVisible)
         {
             foreach (var host in _tiledHosts)
                 host.Visibility = Visibility.Hidden;
+        }
+        else if (_viewModel.IsWebTabActive && _currentWebTabId.HasValue)
+        {
+            if (_webTabControls.TryGetValue(_currentWebTabId.Value, out var webControl))
+                webControl.Visibility = Visibility.Hidden;
         }
         else if (_currentHost != null)
         {
@@ -1080,6 +1107,11 @@ public partial class MainWindow : Window
         {
             foreach (var host in _tiledHosts)
                 host.Visibility = Visibility.Visible;
+        }
+        else if (_viewModel.IsWebTabActive && _currentWebTabId.HasValue)
+        {
+            if (_webTabControls.TryGetValue(_currentWebTabId.Value, out var webControl))
+                webControl.Visibility = Visibility.Visible;
         }
         else if (_currentHost != null)
         {
@@ -1100,9 +1132,16 @@ public partial class MainWindow : Window
         switch (item.Tag)
         {
             case QuickLaunchApp app:
-                _viewModel.OpenWindowPickerCommand.Execute(null);
-                var pickerVm = (WindowPickerViewModel)WindowPickerControl.DataContext;
-                pickerVm.LaunchQuickAppCommand.Execute(app);
+                if (SettingsManager.IsUrl(app.Path))
+                {
+                    _viewModel.OpenWebTabCommand.Execute(app.Path);
+                }
+                else
+                {
+                    _viewModel.OpenWindowPickerCommand.Execute(null);
+                    var pickerVm = (WindowPickerViewModel)WindowPickerControl.DataContext;
+                    pickerVm.LaunchQuickAppCommand.Execute(app);
+                }
                 break;
 
             case Models.TabItem tab:
@@ -1148,6 +1187,14 @@ public partial class MainWindow : Window
                 if (ContentTabContainer.Visibility == Visibility.Visible)
                     return;
 
+                // Hide web tabs when switching to a window tab
+                if (_viewModel.CurrentWindowHost != null)
+                {
+                    HideAllWebTabs();
+                    WebTabContainer.Visibility = Visibility.Collapsed;
+                    _currentWebTabId = null;
+                }
+
                 UpdateWindowHost(_viewModel.CurrentWindowHost);
             });
         }
@@ -1168,7 +1215,7 @@ public partial class MainWindow : Window
             {
                 if (_viewModel.IsContentTabActive)
                 {
-                    // Hide window host and tile, show content tab
+                    // Hide window host, tile, and web tabs, show content tab
                     WindowHostContainer.Visibility = Visibility.Collapsed;
                     if (_currentHost != null)
                     {
@@ -1177,6 +1224,9 @@ public partial class MainWindow : Window
                     }
 
                     TileContainer.Visibility = Visibility.Collapsed;
+                    HideAllWebTabs();
+                    WebTabContainer.Visibility = Visibility.Collapsed;
+                    _currentWebTabId = null;
                     UpdateBackdropVisibility();
                     ShowContentTab(_viewModel.ActiveContentKey);
                 }
@@ -1198,6 +1248,52 @@ public partial class MainWindow : Window
                 }
             });
         }
+        else if (e.PropertyName == nameof(MainViewModel.IsWebTabActive))
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                if (_viewModel.IsWebTabActive)
+                {
+                    // Hide other containers
+                    WindowHostContainer.Visibility = Visibility.Collapsed;
+                    if (_currentHost != null)
+                    {
+                        WindowHostContent.Content = null;
+                        _currentHost = null;
+                    }
+                    TileContainer.Visibility = Visibility.Collapsed;
+                    ContentTabContainer.Visibility = Visibility.Collapsed;
+                    ContentTabContent.Content = null;
+
+                    ShowWebTab(_viewModel.ActiveWebTabId);
+                    UpdateBackdropVisibility();
+                }
+                else
+                {
+                    HideAllWebTabs();
+                    WebTabContainer.Visibility = Visibility.Collapsed;
+                    _currentWebTabId = null;
+
+                    if (!_viewModel.IsContentTabActive && !_viewModel.IsTileVisible)
+                    {
+                        WindowHostContainer.Visibility = _viewModel.SelectedTab != null
+                            ? Visibility.Visible : Visibility.Collapsed;
+                        if (_viewModel.CurrentWindowHost != null)
+                            UpdateWindowHost(_viewModel.CurrentWindowHost);
+                    }
+                }
+            });
+        }
+        else if (e.PropertyName == nameof(MainViewModel.ActiveWebTabId))
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                if (_viewModel.IsWebTabActive)
+                {
+                    ShowWebTab(_viewModel.ActiveWebTabId);
+                }
+            });
+        }
         else if (e.PropertyName == nameof(MainViewModel.IsTileVisible))
         {
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
@@ -1211,6 +1307,9 @@ public partial class MainWindow : Window
                         WindowHostContent.Content = null;
                         _currentHost = null;
                     }
+                    HideAllWebTabs();
+                    WebTabContainer.Visibility = Visibility.Collapsed;
+                    _currentWebTabId = null;
 
                     // Only rebuild if tile container is empty (first time or after full stop)
                     if (_tiledHosts.Count == 0 && _viewModel.CurrentTileLayout != null)
@@ -1262,6 +1361,11 @@ public partial class MainWindow : Window
                 {
                     foreach (var host in _tiledHosts)
                         host.Visibility = Visibility.Hidden;
+                }
+                else if (_viewModel.IsWebTabActive && _currentWebTabId.HasValue)
+                {
+                    if (_webTabControls.TryGetValue(_currentWebTabId.Value, out var webControl))
+                        webControl.Visibility = Visibility.Hidden;
                 }
                 else if (_currentHost != null)
                 {
@@ -1438,6 +1542,64 @@ public partial class MainWindow : Window
         ((ProcessInfoViewModel)_processInfoPage.DataContext).Refresh();
         return _processInfoPage;
     }
+
+    #region Web Tabs
+
+    private async void ShowWebTab(Guid? tabId)
+    {
+        if (tabId == null) return;
+
+        var tab = _tabManager.Tabs.FirstOrDefault(t => t.Id == tabId.Value);
+        if (tab == null || !tab.IsWebTab) return;
+
+        // Hide currently visible web tab (if different)
+        if (_currentWebTabId.HasValue && _currentWebTabId != tabId)
+        {
+            if (_webTabControls.TryGetValue(_currentWebTabId.Value, out var current))
+                current.Visibility = Visibility.Collapsed;
+        }
+
+        // Get or create the WebTabControl for this tab
+        if (!_webTabControls.TryGetValue(tabId.Value, out var control))
+        {
+            var envService = App.GetService<Services.WebViewEnvironmentService>();
+            control = new Views.WebTabControl(tabId.Value, envService);
+
+            control.TitleChanged += (s, title) =>
+            {
+                tab.Title = title;
+            };
+            control.UrlChanged += (s, url) =>
+            {
+                tab.WebUrl = url;
+            };
+            control.FaviconChanged += (s, icon) =>
+            {
+                if (icon != null)
+                    tab.Icon = icon;
+            };
+
+            _webTabControls[tabId.Value] = control;
+            _tabManager.RegisterWebTabControl(tabId.Value, control);
+            WebTabContainer.Children.Add(control);
+
+            await control.InitializeAsync(tab.WebUrl ?? "https://www.google.com");
+        }
+
+        control.Visibility = Visibility.Visible;
+        WebTabContainer.Visibility = Visibility.Visible;
+        _currentWebTabId = tabId.Value;
+    }
+
+    private void HideAllWebTabs()
+    {
+        foreach (var control in _webTabControls.Values)
+        {
+            control.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    #endregion
 
     #region Tile Layout
 

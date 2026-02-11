@@ -4,6 +4,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Wind.Interop;
 using Wind.Models;
+using Wind.Views;
 
 namespace Wind.Services;
 
@@ -12,6 +13,7 @@ public class TabManager
     private readonly WindowManager _windowManager;
     private readonly SettingsManager _settingsManager;
     private readonly Dictionary<Guid, WindowHost> _windowHosts = new();
+    private readonly Dictionary<Guid, WebTabControl> _webTabControls = new();
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _cleanupTimer;
 
@@ -149,6 +151,49 @@ public class TabManager
         return tab;
     }
 
+    public TabItem AddWebTab(string url, bool activate = true)
+    {
+        var tab = new TabItem { WebUrl = url };
+        tab.Title = "New Tab";
+
+        try
+        {
+            var iconUri = new Uri("pack://application:,,,/Assets/Wind.ico");
+            tab.Icon = new BitmapImage(iconUri);
+        }
+        catch
+        {
+            tab.Icon = null;
+        }
+
+        Tabs.Add(tab);
+        TabAdded?.Invoke(this, tab);
+
+        if (activate)
+            ActiveTab = tab;
+
+        return tab;
+    }
+
+    public void RegisterWebTabControl(Guid tabId, WebTabControl control)
+    {
+        _webTabControls[tabId] = control;
+    }
+
+    public WebTabControl? GetWebTabControl(Guid tabId)
+    {
+        return _webTabControls.TryGetValue(tabId, out var control) ? control : null;
+    }
+
+    public void RemoveWebTabControl(Guid tabId)
+    {
+        if (_webTabControls.TryGetValue(tabId, out var control))
+        {
+            control.Dispose();
+            _webTabControls.Remove(tabId);
+        }
+    }
+
     private void OnHostedWindowClosed(TabItem tab)
     {
         // Ensure we're on the UI thread
@@ -195,7 +240,11 @@ public class TabManager
         // Update tile layout if this tab was tiled
         UpdateTileForRemovedTab(tab);
 
-        if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
+        if (tab.IsWebTab)
+        {
+            RemoveWebTabControl(tab.Id);
+        }
+        else if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
         {
             _windowManager.ReleaseWindow(host);
             _windowHosts.Remove(tab.Id);
@@ -226,8 +275,8 @@ public class TabManager
 
     public void CloseTab(TabItem tab)
     {
-        // Content tabs (settings, etc.) are not embedded apps, so always just remove them
-        if (tab.IsContentTab)
+        // Content tabs and web tabs are not embedded apps, so always just remove them
+        if (tab.IsContentTab || tab.IsWebTab)
         {
             RemoveTab(tab);
             return;
@@ -366,6 +415,7 @@ public class TabManager
     {
         var invalidTabs = Tabs.Where(t =>
             !t.IsContentTab &&
+            !t.IsWebTab &&
             (t.Window?.Handle == IntPtr.Zero ||
             !_windowManager.IsWindowValid(t.Window!.Handle))).ToList();
 
@@ -386,6 +436,7 @@ public class TabManager
         foreach (var tab in Tabs.ToList())
         {
             if (tab.IsContentTab) continue;
+            if (tab.IsWebTab) { RemoveWebTabControl(tab.Id); continue; }
 
             if (_windowHosts.TryGetValue(tab.Id, out var host))
             {
@@ -412,6 +463,7 @@ public class TabManager
         foreach (var tab in Tabs.ToList())
         {
             if (tab.IsContentTab) continue;
+            if (tab.IsWebTab) { RemoveWebTabControl(tab.Id); continue; }
 
             if (tab.Window?.Handle != IntPtr.Zero)
             {
@@ -434,6 +486,7 @@ public class TabManager
         foreach (var tab in Tabs.ToList())
         {
             if (tab.IsContentTab) continue;
+            if (tab.IsWebTab) { RemoveWebTabControl(tab.Id); continue; }
 
             if (_windowHosts.TryGetValue(tab.Id, out var host))
             {

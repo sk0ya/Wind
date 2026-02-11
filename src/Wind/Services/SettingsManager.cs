@@ -114,7 +114,7 @@ public class SettingsManager
     {
         if (string.IsNullOrWhiteSpace(path)) return null!;
 
-        var appName = name ?? Path.GetFileNameWithoutExtension(path);
+        var appName = name ?? (IsUrl(path) ? path : Path.GetFileNameWithoutExtension(path));
 
         var app = new StartupApplication
         {
@@ -174,9 +174,17 @@ public class SettingsManager
     {
         if (string.IsNullOrWhiteSpace(path)) return null!;
 
-        var appName = name ?? Path.GetFileNameWithoutExtension(path);
-        if (string.IsNullOrEmpty(appName))
-            appName = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+        string appName;
+        if (name != null)
+            appName = name;
+        else if (IsUrl(path))
+            appName = path;
+        else
+        {
+            appName = Path.GetFileNameWithoutExtension(path);
+            if (string.IsNullOrEmpty(appName))
+                appName = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+        }
 
         var app = new QuickLaunchApp
         {
@@ -239,14 +247,27 @@ public class SettingsManager
         TabHeaderPositionChanged?.Invoke(position);
     }
 
-    public List<(Process Process, StartupApplication Config)> LaunchStartupApplications()
+    public static bool IsUrl(string path)
+    {
+        return Uri.TryCreate(path, UriKind.Absolute, out var uri) &&
+               (uri.Scheme == "http" || uri.Scheme == "https");
+    }
+
+    public (List<(Process Process, StartupApplication Config)> Processes, List<StartupApplication> UrlApps) LaunchStartupApplications()
     {
         var results = new List<(Process, StartupApplication)>();
+        var urlApps = new List<StartupApplication>();
 
         foreach (var app in _settings.StartupApplications)
         {
             try
             {
+                if (IsUrl(app.Path))
+                {
+                    urlApps.Add(app);
+                    continue;
+                }
+
                 if (!File.Exists(app.Path)) continue;
 
                 var startInfo = new ProcessStartInfo
@@ -268,6 +289,6 @@ public class SettingsManager
             }
         }
 
-        return results;
+        return (results, urlApps);
     }
 }

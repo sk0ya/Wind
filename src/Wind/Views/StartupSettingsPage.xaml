@@ -13,10 +13,24 @@
             <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                     CornerRadius="6" Padding="12,8" Margin="0,0,0,4">
                 <StackPanel>
-                    <ui:Button x:Name="AddAppButton" Icon="{ui:SymbolIcon Add24}"
-                              Content="Add Application"
-                              Command="{Binding AddStartupApplicationCommand}"
-                              HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <!-- Add new app: text input + browse + add -->
+                    <Grid x:Name="AddAppArea" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox x:Name="StartupPathBox"
+                                   Text="{Binding NewStartupPath, UpdateSourceTrigger=PropertyChanged}"
+                                   PlaceholderText="URL or path to .exe"
+                                   PreviewKeyDown="StartupPath_PreviewKeyDown"/>
+                        <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon FolderOpen24}"
+                                  Command="{Binding BrowseStartupApplicationCommand}"
+                                  ToolTip="Browse..." Margin="4,0,0,0"/>
+                        <ui:Button x:Name="AddAppButton" Grid.Column="2" Icon="{ui:SymbolIcon Add24}"
+                                  Command="{Binding AddStartupApplicationCommand}"
+                                  ToolTip="Add" Margin="4,0,0,0"/>
+                    </Grid>
 
                     <!-- App list with inline editing -->
                     <ItemsControl ItemsSource="{Binding StartupApplications}">
@@ -36,6 +50,12 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
+                                        <!-- URL items: Globe icon -->
+                                        <ui:SymbolIcon Symbol="Globe24" Margin="0,6,8,0"
+                                               VerticalAlignment="Top" FontSize="20"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                               Visibility="{Binding IsUrl, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        <!-- Non-URL items: App icon or fallback -->
                                         <Image Source="{Binding Icon}" Width="24" Height="24"
                                                Margin="0,6,8,0" VerticalAlignment="Top"
                                                RenderOptions.BitmapScalingMode="HighQuality">
@@ -45,14 +65,31 @@
                                                         <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                         </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsUrl}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Image.Style>
                                         </Image>
                                         <ui:SymbolIcon Symbol="Apps24" Margin="0,6,8,0"
                                                VerticalAlignment="Top"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                               Visibility="{Binding Icon, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}"/>
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                                            <ui:SymbolIcon.Style>
+                                                <Style TargetType="ui:SymbolIcon">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Icon}" Value="{x:Null}"/>
+                                                                <Condition Binding="{Binding IsUrl}" Value="False"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:SymbolIcon.Style>
+                                        </ui:SymbolIcon>
                                         <StackPanel Grid.Column="1">
                                             <!-- Row 1: Name + Path -->
                                             <Grid Margin="0,0,0,4">

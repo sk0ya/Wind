@@ -48,6 +48,7 @@ public partial class WindowPickerViewModel : ObservableObject
 
     public event EventHandler<WindowInfo>? WindowSelected;
     public event EventHandler? Cancelled;
+    public event EventHandler<string>? WebTabRequested;
 
     public WindowPickerViewModel(WindowManager windowManager, SettingsManager settingsManager)
     {
@@ -403,11 +404,21 @@ public partial class WindowPickerViewModel : ObservableObject
         {
             IsLaunching = true;
 
+            var type = DetectLaunchType(app.Path);
+
+            // URLs open as web tabs, not external processes
+            if (type == QuickLaunchType.Url)
+            {
+                IsLaunching = false;
+                WebTabRequested?.Invoke(this, app.Path);
+                Cancelled?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
             // Snapshot existing window handles before launch
             var existingHandles = new HashSet<IntPtr>(
                 _windowManager.EnumerateWindows().Select(w => w.Handle));
 
-            var type = DetectLaunchType(app.Path);
             var startInfo = BuildStartInfo(app, type);
 
             Process.Start(startInfo);

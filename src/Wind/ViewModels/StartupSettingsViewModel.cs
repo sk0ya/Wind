@@ -43,6 +43,8 @@ public partial class StartupAppItem : ObservableObject
 
     public string Path => _app.Path;
 
+    public bool IsUrl => SettingsManager.IsUrl(_app.Path);
+
     public string Arguments
     {
         get => _app.Arguments;
@@ -91,6 +93,9 @@ public partial class StartupSettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _newTileSetName = string.Empty;
+
+    [ObservableProperty]
+    private string _newStartupPath = string.Empty;
 
     public bool HasNoStartupApplications => StartupApplications.Count == 0;
 
@@ -142,6 +147,18 @@ public partial class StartupSettingsViewModel : ObservableObject
     [RelayCommand]
     private void AddStartupApplication()
     {
+        if (string.IsNullOrWhiteSpace(NewStartupPath)) return;
+
+        var path = NewStartupPath.Trim();
+        var app = _settingsManager.AddStartupApplication(path);
+        StartupApplications.Add(new StartupAppItem(app, _settingsManager));
+        NewStartupPath = string.Empty;
+        OnPropertyChanged(nameof(HasNoStartupApplications));
+    }
+
+    [RelayCommand]
+    private void BrowseStartupApplication()
+    {
         var dialog = new OpenFileDialog
         {
             Title = "Select Application",
@@ -151,12 +168,7 @@ public partial class StartupSettingsViewModel : ObservableObject
 
         if (dialog.ShowDialog() == true)
         {
-            var path = dialog.FileName;
-            var name = Path.GetFileNameWithoutExtension(path);
-
-            var app = _settingsManager.AddStartupApplication(path, "", name);
-            StartupApplications.Add(new StartupAppItem(app, _settingsManager));
-            OnPropertyChanged(nameof(HasNoStartupApplications));
+            NewStartupPath = dialog.FileName;
         }
     }
 

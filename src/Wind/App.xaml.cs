@@ -25,6 +25,7 @@ public partial class App : Application
         services.AddSingleton<TabManager>();
         services.AddSingleton<SettingsManager>();
         services.AddSingleton<HotkeyManager>();
+        services.AddSingleton<WebViewEnvironmentService>();
 
         // ViewModels
         services.AddSingleton<MainViewModel>();
@@ -120,10 +121,18 @@ public partial class App : Application
             windowManager.EnumerateWindows().Select(w => w.Handle));
 
         // Launch startup applications and embed them
-        var processConfigs = settingsManager.LaunchStartupApplications();
+        var (processConfigs, urlApps) = settingsManager.LaunchStartupApplications();
+
+        var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+
+        // Open URL startup items as web tabs
+        foreach (var urlApp in urlApps)
+        {
+            viewModel.OpenWebTabCommand.Execute(urlApp.Path);
+        }
+
         if (processConfigs.Count > 0)
         {
-            var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
             await viewModel.EmbedStartupProcessesAsync(processConfigs, settingsManager.Settings, preExistingWindows);
         }
     }

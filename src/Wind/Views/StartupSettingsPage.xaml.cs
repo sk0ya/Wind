@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using Wind.ViewModels;
 
@@ -11,6 +12,15 @@ public partial class StartupSettingsPage : UserControl
     {
         InitializeComponent();
         DataContext = viewModel;
+    }
+
+    private void StartupPath_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && DataContext is StartupSettingsViewModel vm)
+        {
+            vm.AddStartupApplicationCommand.Execute(null);
+            e.Handled = true;
+        }
     }
 
     private void AddAppToTileSet_Click(object sender, RoutedEventArgs e)
