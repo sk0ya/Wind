@@ -515,6 +515,9 @@ public partial class MainWindow : Window
 
         // When Wind window is activated, forward focus to the embedded window
         // only if the mouse is over the content area (not the tab bar).
+        // Skip when an overlay (command palette / window picker) is open.
+        if (_viewModel.IsCommandPaletteOpen || _viewModel.IsWindowPickerOpen) return;
+
         Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
             if (_currentHost == null) return;
@@ -1239,10 +1242,9 @@ public partial class MainWindow : Window
 
     private void CommandPaletteOverlay_BackgroundClick(object sender, MouseButtonEventArgs e)
     {
-        if (e.OriginalSource == CommandPaletteOverlay)
+        if (!CommandPaletteControl.IsMouseOver)
         {
             _viewModel.CloseCommandPaletteCommand.Execute(null);
-            RestoreEmbeddedWindow();
         }
     }
 
@@ -1464,7 +1466,6 @@ public partial class MainWindow : Window
 
                 var palVm = (CommandPaletteViewModel)CommandPaletteControl.DataContext;
                 palVm.Open();
-                CommandPaletteControl.FocusSearch();
             }
             else
             {

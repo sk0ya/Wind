@@ -12,24 +12,21 @@ public partial class CommandPalette : UserControl
     public CommandPalette()
     {
         InitializeComponent();
+        IsVisibleChanged += OnIsVisibleChanged;
     }
 
-    public void FocusSearch()
+    private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        if (e.NewValue is true)
         {
-            SearchBox.Focus();
-            Keyboard.Focus(SearchBox);
-
-            // Wpf.Ui TextBox wraps an inner TextBox; try to focus it directly
-            var inner = FindVisualChild<System.Windows.Controls.TextBox>(SearchBox);
-            if (inner != null)
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
             {
-                inner.Focus();
-                Keyboard.Focus(inner);
-                inner.SelectAll();
-            }
-        });
+                SearchBox.ApplyTemplate();
+                UpdateLayout();
+                var inner = FindVisualChild<System.Windows.Controls.TextBox>(SearchBox);
+                Keyboard.Focus(inner ?? (IInputElement)SearchBox);
+            });
+        }
     }
 
     private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)

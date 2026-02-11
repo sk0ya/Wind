@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
+using Wind.Interop;
 using Wind.Services;
 using Wind.ViewModels;
 namespace Wind;
@@ -135,6 +137,16 @@ public partial class App : Application
         {
             await viewModel.EmbedStartupProcessesAsync(processConfigs, settingsManager.Settings, preExistingWindows);
         }
+
+        // Startup apps may have stolen foreground focus.
+        // Force Wind back to the foreground after embedding completes.
+        var windHandle = new WindowInteropHelper(mainWindow).Handle;
+        if (windHandle != IntPtr.Zero)
+        {
+            NativeMethods.ForceForegroundWindow(windHandle);
+        }
+        mainWindow.Activate();
+        mainWindow.Focus();
     }
 
     public static T GetService<T>() where T : class

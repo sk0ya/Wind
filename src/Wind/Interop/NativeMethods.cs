@@ -170,6 +170,31 @@ internal static class NativeMethods
         return length > 0 ? sb.ToString() : string.Empty;
     }
 
+    /// <summary>
+    /// Brings the specified window to the foreground even when another process
+    /// currently owns the foreground lock. Uses AttachThreadInput to temporarily
+    /// share input state with the current foreground thread.
+    /// </summary>
+    public static void ForceForegroundWindow(IntPtr hWnd)
+    {
+        var foregroundWindow = GetForegroundWindow();
+        if (foregroundWindow == hWnd) return;
+
+        var foregroundThread = GetWindowThreadProcessId(foregroundWindow, out _);
+        var currentThread = GetCurrentThreadId();
+
+        if (foregroundThread != currentThread)
+        {
+            AttachThreadInput(foregroundThread, currentThread, true);
+            SetForegroundWindow(hWnd);
+            AttachThreadInput(foregroundThread, currentThread, false);
+        }
+        else
+        {
+            SetForegroundWindow(hWnd);
+        }
+    }
+
     // --- Process elevation check ---
 
     [DllImport("kernel32.dll", SetLastError = true)]
