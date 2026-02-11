@@ -16,6 +16,7 @@ public class WindowInfo
     public int ProcessId { get; set; }
     public ImageSource? Icon { get; set; }
     public string? ExecutablePath { get; set; }
+    public bool IsExplorer { get; set; }
 
     public static WindowInfo? FromHandle(IntPtr handle)
     {
@@ -54,6 +55,11 @@ public class WindowInfo
             // Process may have exited
         }
 
+        // Detect Explorer folder windows (CabinetWClass)
+        string className = NativeMethods.GetWindowClassName(handle);
+        bool isExplorer = string.Equals(processName, "explorer", StringComparison.OrdinalIgnoreCase)
+                          && string.Equals(className, "CabinetWClass", StringComparison.Ordinal);
+
         return new WindowInfo
         {
             Handle = handle,
@@ -61,7 +67,8 @@ public class WindowInfo
             ProcessName = processName,
             ProcessId = (int)processId,
             Icon = icon,
-            ExecutablePath = executablePath
+            ExecutablePath = executablePath,
+            IsExplorer = isExplorer
         };
     }
 

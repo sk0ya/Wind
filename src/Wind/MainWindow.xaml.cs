@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private string _currentTabPosition = "Top";
     private WindowResizeHelper? _resizeHelper;
     private bool _isTabBarCollapsed;
+    private readonly BackdropWindow _backdropWindow = new();
 
     public MainWindow()
     {
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
         SizeChanged += MainWindow_SizeChanged;
+        LocationChanged += MainWindow_LocationChanged;
         Activated += MainWindow_Activated;
         WindowHostContainer.SizeChanged += WindowHostContainer_SizeChanged;
 
@@ -493,6 +495,9 @@ public partial class MainWindow : Window
 
         // Create resize grip overlay windows at the window edges
         _resizeHelper = new WindowResizeHelper(hwnd);
+
+        // Create the backdrop window for Explorer transparency workaround
+        _backdropWindow.Create();
     }
 
     private void MainWindow_Activated(object? sender, EventArgs e)
@@ -564,6 +569,7 @@ public partial class MainWindow : Window
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _settingsManager.TabHeaderPositionChanged -= OnTabHeaderPositionChanged;
+        _backdropWindow.Destroy();
         _resizeHelper?.Dispose();
         _resizeHelper = null;
         _viewModel.Cleanup();
@@ -574,6 +580,12 @@ public partial class MainWindow : Window
         UpdateWindowHostSize();
         _resizeHelper?.UpdatePositions();
         UpdateBlockerPosition();
+        UpdateBackdropPosition();
+    }
+
+    private void MainWindow_LocationChanged(object? sender, EventArgs e)
+    {
+        UpdateBackdropPosition();
     }
 
     private void WindowHostContainer_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -606,6 +618,16 @@ public partial class MainWindow : Window
         }
 
         UpdateWindowHostSize();
+
+        if (WindowState == WindowState.Minimized)
+        {
+            _backdropWindow.Hide();
+        }
+        else
+        {
+            // Defer position update so layout completes first
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateBackdropPosition);
+        }
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -946,6 +968,7 @@ public partial class MainWindow : Window
     {
         _viewModel.OpenWindowPickerCommand.Execute(null);
         _resizeHelper?.SetVisible(false);
+        _backdropWindow.Hide();
         // Hide embedded window(s) while picker is open
         if (_viewModel.IsTileVisible)
         {
@@ -972,6 +995,8 @@ public partial class MainWindow : Window
 
         if (WindowState != WindowState.Maximized)
             _resizeHelper?.SetVisible(true);
+
+        UpdateBackdropVisibility();
     }
 
     private void OnCommandPaletteItemExecuted(object? sender, Models.CommandPaletteItem item)
@@ -1059,6 +1084,7 @@ public partial class MainWindow : Window
                     }
 
                     TileContainer.Visibility = Visibility.Collapsed;
+                    _backdropWindow.Hide();
                     ShowContentTab(_viewModel.ActiveContentKey);
                 }
                 else
@@ -1137,6 +1163,7 @@ public partial class MainWindow : Window
             if (_viewModel.IsCommandPaletteOpen)
             {
                 _resizeHelper?.SetVisible(false);
+                _backdropWindow.Hide();
                 if (_viewModel.IsTileVisible)
                 {
                     foreach (var host in _tiledHosts)
@@ -1192,6 +1219,8 @@ public partial class MainWindow : Window
                 _currentHost?.FocusHostedWindow();
             });
         }
+
+        UpdateBackdropVisibility();
     }
 
     private void UpdateWindowHostSize()
@@ -1208,6 +1237,46 @@ public partial class MainWindow : Window
         {
             _currentHost.ResizeHostedWindow(width, height);
         }
+    }
+
+    private bool IsCurrentTabExplorer()
+    {
+        var tab = _viewModel.SelectedTab;
+        return tab is { IsContentTab: false, Window.IsExplorer: true };
+    }
+
+    private void UpdateBackdropVisibility()
+    {
+        if (IsCurrentTabExplorer() && !_viewModel.IsContentTabActive
+            && !_viewModel.IsWindowPickerOpen && !_viewModel.IsCommandPaletteOpen
+            && WindowState != WindowState.Minimized)
+        {
+            ShowBackdrop();
+        }
+        else
+        {
+            _backdropWindow.Hide();
+        }
+    }
+
+    private void ShowBackdrop()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        NativeMethods.GetWindowRect(hwnd, out var rect);
+        _backdropWindow.Show(hwnd, rect.Left, rect.Top, rect.Width, rect.Height);
+    }
+
+    private void UpdateBackdropPosition()
+    {
+        if (!_backdropWindow.IsVisible) return;
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        NativeMethods.GetWindowRect(hwnd, out var rect);
+        _backdropWindow.UpdatePosition(hwnd, rect.Left, rect.Top, rect.Width, rect.Height);
     }
 
     private void ShowContentTab(string? contentKey)
