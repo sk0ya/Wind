@@ -39,6 +39,12 @@ public partial class WindowPickerViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLaunching;
 
+    [ObservableProperty]
+    private bool _canAddSelectedWindow;
+
+    [ObservableProperty]
+    private bool _isSelectedWindowElevated;
+
     public event EventHandler<WindowInfo>? WindowSelected;
     public event EventHandler? Cancelled;
 
@@ -114,6 +120,12 @@ public partial class WindowPickerViewModel : ObservableObject
         }
     }
 
+    partial void OnSelectedWindowChanged(WindowInfo? value)
+    {
+        CanAddSelectedWindow = value != null && !value.IsElevated;
+        IsSelectedWindowElevated = value?.IsElevated == true;
+    }
+
     partial void OnSearchTextChanged(string value)
     {
         _windowsView.Refresh();
@@ -131,7 +143,7 @@ public partial class WindowPickerViewModel : ObservableObject
     [RelayCommand]
     private void Select()
     {
-        if (SelectedWindow != null)
+        if (SelectedWindow != null && !SelectedWindow.IsElevated)
         {
             WindowSelected?.Invoke(this, SelectedWindow);
         }
@@ -146,7 +158,7 @@ public partial class WindowPickerViewModel : ObservableObject
     [RelayCommand]
     private void SelectWindow(WindowInfo? window)
     {
-        if (window != null)
+        if (window != null && !window.IsElevated)
         {
             WindowSelected?.Invoke(this, window);
         }

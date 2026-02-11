@@ -169,4 +169,61 @@ internal static class NativeMethods
         int length = GetClassName(hWnd, sb, sb.Capacity);
         return length > 0 ? sb.ToString() : string.Empty;
     }
+
+    // --- Process elevation check ---
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, uint processId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetTokenInformation(
+        IntPtr TokenHandle, int TokenInformationClass,
+        out int TokenInformation, int TokenInformationLength, out int ReturnLength);
+
+    private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    private const uint TOKEN_QUERY = 0x0008;
+    private const int TokenElevation = 20;
+
+    /// <summary>
+    /// Returns true if the process that owns the given window is running elevated (admin).
+    /// </summary>
+    public static bool IsProcessElevated(IntPtr hwnd)
+    {
+        GetWindowThreadProcessId(hwnd, out uint processId);
+        if (processId == 0) return false;
+
+        IntPtr hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+        if (hProcess == IntPtr.Zero)
+            return true; // Cannot open process — assume elevated
+
+        try
+        {
+            if (!OpenProcessToken(hProcess, TOKEN_QUERY, out IntPtr hToken))
+                return true; // Cannot get token — assume elevated
+
+            try
+            {
+                if (GetTokenInformation(hToken, TokenElevation, out int elevation, sizeof(int), out _))
+                    return elevation != 0;
+                return true; // Query failed — assume elevated
+            }
+            finally
+            {
+                CloseHandle(hToken);
+            }
+        }
+        finally
+        {
+            CloseHandle(hProcess);
+        }
+    }
 }

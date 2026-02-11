@@ -83,8 +83,17 @@
                                     <TextBlock Text="{Binding Title}" FontSize="14"
                                                TextTrimming="CharacterEllipsis"
                                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <TextBlock Text="{Binding ProcessName}" FontSize="12"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding ProcessName}" FontSize="12"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <ui:SymbolIcon Symbol="Shield24" Margin="8,0,0,0" FontSize="12"
+                                                       Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                       Visibility="{Binding IsElevated, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        <TextBlock Text="管理者" FontSize="11" Margin="2,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                   Visibility="{Binding IsElevated, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -112,10 +121,15 @@
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
-                <TextBlock Grid.Column="1" Text="Launching..."
-                           VerticalAlignment="Center" Margin="12,0,0,0"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                           Visibility="{Binding IsLaunching, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,0"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Launching..."
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding IsLaunching, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock Text="管理者権限のアプリは埋め込みできません"
+                               Foreground="{DynamicResource AccentFillColorDefaultBrush}" FontSize="12"
+                               Visibility="{Binding IsSelectedWindowElevated, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </StackPanel>
 
                 <ui:Button Grid.Column="2" Content="Cancel"
                            Command="{Binding CancelCommand}"
@@ -123,7 +137,7 @@
                 <ui:Button Grid.Column="3" Content="Add Window"
                            Command="{Binding SelectCommand}"
                            Appearance="Primary" Padding="24,8"
-                           IsEnabled="{Binding SelectedWindow, Converter={StaticResource NotNullConverter}}"/>
+                           IsEnabled="{Binding CanAddSelectedWindow}"/>
             </Grid>
         </Grid>
     </Border>

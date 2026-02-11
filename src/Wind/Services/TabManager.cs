@@ -88,6 +88,10 @@ public class TabManager
             return existingTab;
         }
 
+        // Safety net: don't attempt to embed elevated process windows from a non-admin Wind
+        if (!App.IsRunningAsAdmin() && NativeMethods.IsProcessElevated(windowInfo.Handle))
+            return null;
+
         var host = _windowManager.EmbedWindow(windowInfo.Handle);
         if (host == null) return null;
 

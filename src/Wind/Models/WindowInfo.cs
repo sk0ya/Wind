@@ -17,6 +17,7 @@ public class WindowInfo
     public ImageSource? Icon { get; set; }
     public string? ExecutablePath { get; set; }
     public bool IsExplorer { get; set; }
+    public bool IsElevated { get; set; }
 
     public static WindowInfo? FromHandle(IntPtr handle)
     {
@@ -60,6 +61,9 @@ public class WindowInfo
         bool isExplorer = string.Equals(processName, "explorer", StringComparison.OrdinalIgnoreCase)
                           && string.Equals(className, "CabinetWClass", StringComparison.Ordinal);
 
+        // Check elevation only when Wind is not running as admin
+        bool isElevated = !App.IsRunningAsAdmin() && NativeMethods.IsProcessElevated(handle);
+
         return new WindowInfo
         {
             Handle = handle,
@@ -68,7 +72,8 @@ public class WindowInfo
             ProcessId = (int)processId,
             Icon = icon,
             ExecutablePath = executablePath,
-            IsExplorer = isExplorer
+            IsExplorer = isExplorer,
+            IsElevated = isElevated
         };
     }
 
