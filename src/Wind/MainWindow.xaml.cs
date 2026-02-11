@@ -1207,13 +1207,13 @@ public partial class MainWindow : Window
                 if (ContentTabContainer.Visibility == Visibility.Visible)
                     return;
 
-                // Hide web tabs when switching to a window tab
-                if (_viewModel.CurrentWindowHost != null)
-                {
-                    HideAllWebTabs();
-                    WebTabContainer.Visibility = Visibility.Collapsed;
-                    _currentWebTabId = null;
-                }
+                // Skip if returning from web tab — the IsWebTabActive handler
+                // will call UpdateWindowHost after restoring container visibility.
+                // Without this guard, UpdateWindowHost is called twice (once here and
+                // once from the IsWebTabActive handler), causing a detach/re-attach
+                // cycle that breaks WS_CHILD window rendering.
+                if (WebTabContainer.Visibility == Visibility.Visible)
+                    return;
 
                 UpdateWindowHost(_viewModel.CurrentWindowHost);
             });
