@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows.Data;
 using System.Windows.Threading;
 using Wind.Models;
@@ -217,6 +218,57 @@ public partial class WindowPickerViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Parse a .cmd/.bat script to find the first .exe it references,
+    /// resolve %~dp0 relative to the script's directory, then check PE subsystem.
+    /// Falls back to GuiApp if no exe reference is found.
+    /// </summary>
+    private static QuickLaunchType ClassifyScript(string scriptPath)
+    {
+        try
+        {
+            var scriptDir = Path.GetDirectoryName(scriptPath) ?? "";
+            var content = System.IO.File.ReadAllText(scriptPath);
+
+            var matches = Regex.Matches(
+                content,
+                @"[""']?([^""'\r\n]*?\.exe)\b",
+                RegexOptions.IgnoreCase);
+
+            foreach (Match m in matches)
+            {
+                var raw = m.Groups[1].Value.Trim();
+
+                // Expand %~dp0 → script's own directory
+                raw = Regex.Replace(
+                    raw, @"%~dp0\\?", scriptDir + "\\",
+                    RegexOptions.IgnoreCase);
+
+                // Expand %dp0% → script's own directory (SET dp0=%~dp0 pattern)
+                raw = Regex.Replace(
+                    raw, @"%dp0%\\?", scriptDir + "\\",
+                    RegexOptions.IgnoreCase);
+
+                // Try as full path first
+                if (Path.IsPathFullyQualified(raw) && System.IO.File.Exists(raw))
+                    return IsConsoleSubsystem(raw) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
+
+                // Try resolving bare exe name (e.g. "node") from PATH
+                var name = Path.GetFileNameWithoutExtension(raw);
+                var resolved = ResolveFromPath(name);
+                if (resolved != null)
+                    return IsConsoleSubsystem(resolved) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
+            }
+        }
+        catch
+        {
+            // If we can't read/parse, fall through
+        }
+
+        // Default: assume GUI (suppress console flash)
+        return QuickLaunchType.GuiApp;
+    }
+
     private static QuickLaunchType DetectLaunchType(string path)
     {
         // URL: http(s)://...
@@ -235,8 +287,10 @@ public partial class WindowPickerViewModel : ObservableObject
                 var ext = Path.GetExtension(path).ToLowerInvariant();
                 if (ext is ".exe" or ".com")
                     return IsConsoleSubsystem(path) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
-                if (ext is ".cmd" or ".bat")
+                if (ext is ".bat")
                     return QuickLaunchType.BatchScript;
+                if (ext is ".cmd")
+                    return ClassifyScript(path);
                 return QuickLaunchType.File;
             }
 
@@ -248,8 +302,10 @@ public partial class WindowPickerViewModel : ObservableObject
         if (resolved != null)
         {
             var ext = Path.GetExtension(resolved).ToLowerInvariant();
-            if (ext is ".cmd" or ".bat")
+            if (ext is ".bat")
                 return QuickLaunchType.BatchScript;
+            if (ext is ".cmd")
+                return ClassifyScript(resolved);
             return IsConsoleSubsystem(resolved) ? QuickLaunchType.ConsoleApp : QuickLaunchType.GuiApp;
         }
 
