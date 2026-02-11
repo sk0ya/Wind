@@ -77,12 +77,19 @@ public partial class App : Application
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
 
+        // Snapshot existing window handles before launching, so we can detect
+        // newly created windows for processes like explorer.exe that delegate
+        // to an already-running instance and exit immediately.
+        var windowManager = _serviceProvider.GetRequiredService<WindowManager>();
+        var preExistingWindows = new HashSet<IntPtr>(
+            windowManager.EnumerateWindows().Select(w => w.Handle));
+
         // Launch startup applications and embed them
         var processConfigs = settingsManager.LaunchStartupApplications();
         if (processConfigs.Count > 0)
         {
             var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
-            await viewModel.EmbedStartupProcessesAsync(processConfigs, settingsManager.Settings);
+            await viewModel.EmbedStartupProcessesAsync(processConfigs, settingsManager.Settings, preExistingWindows);
         }
     }
 

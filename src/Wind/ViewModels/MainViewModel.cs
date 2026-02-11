@@ -340,7 +340,8 @@ public partial class MainViewModel : ObservableObject
 
     public async Task EmbedStartupProcessesAsync(
         List<(Process Process, StartupApplication Config)> processConfigs,
-        AppSettings settings)
+        AppSettings settings,
+        HashSet<IntPtr>? preExistingWindows = null)
     {
         if (processConfigs.Count == 0) return;
 
@@ -354,7 +355,32 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                if (process.HasExited) continue;
+                if (process.HasExited)
+                {
+                    // Process exited immediately — explorer.exe delegates to the
+                    // existing shell process instead of running a new instance.
+                    // Find the newly created window by comparing against the
+                    // pre-launch snapshot.
+                    if (preExistingWindows != null && IsExplorerPath(config.Path))
+                    {
+                        _windowManager.RefreshWindowList();
+                        var newExplorerWindow = _windowManager.AvailableWindows
+                            .FirstOrDefault(w => w.IsExplorer && !preExistingWindows.Contains(w.Handle));
+
+                        if (newExplorerWindow != null)
+                        {
+                            preExistingWindows.Add(newExplorerWindow.Handle);
+                            var tab = _tabManager.AddTab(newExplorerWindow, activate: false);
+                            if (tab != null)
+                            {
+                                tab.IsLaunchedAtStartup = true;
+                                StatusMessage = $"Added: {tab.Title}";
+                                configTabPairs.Add((config, tab));
+                            }
+                        }
+                    }
+                    continue;
+                }
 
                 // Wait for main window handle
                 for (int i = 0; i < 20; i++)
@@ -474,6 +500,12 @@ public partial class MainViewModel : ObservableObject
             StatusMessage = $"Tiled {orderedTabs.Count} tabs";
             break; // Only one tile layout can be active at a time
         }
+    }
+
+    private static bool IsExplorerPath(string path)
+    {
+        var fileName = System.IO.Path.GetFileName(path);
+        return fileName.Equals("explorer.exe", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Color? TryParseColor(string colorString)

@@ -493,6 +493,9 @@ public partial class MainWindow : Window
         var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
         DwmExtendFrameIntoClientArea(hwnd, ref margins);
 
+        // Force frame recalculation so WM_NCCALCSIZE handler removes the non-client border
+        RefreshWindowFrame(hwnd);
+
         // Create resize grip overlay windows at the window edges
         _resizeHelper = new WindowResizeHelper(hwnd);
 
@@ -554,6 +557,18 @@ public partial class MainWindow : Window
         }
 
         return IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Forces a frame recalculation on Wind's window, triggering WM_NCCALCSIZE
+    /// to re-eliminate the non-client border.
+    /// </summary>
+    private static void RefreshWindowFrame(IntPtr hwnd)
+    {
+        const uint SWP_NOMOVE = 0x0002;
+        const uint SWP_NOSIZE = 0x0001;
+        NativeMethods.SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED);
     }
 
     private static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
@@ -1232,6 +1247,11 @@ public partial class MainWindow : Window
             {
                 UpdateWindowHostSize();
                 _currentHost?.FocusHostedWindow();
+
+                // Force frame recalculation to re-suppress Wind's border after embedding
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd != IntPtr.Zero)
+                    RefreshWindowFrame(hwnd);
             });
         }
 
