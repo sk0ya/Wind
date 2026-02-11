@@ -524,11 +524,23 @@ public partial class MainWindow : Window
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        const int WM_GETMINMAXINFO = 0x0024;
         const int WM_ERASEBKGND = 0x0014;
+        const int WM_GETMINMAXINFO = 0x0024;
+        const int WM_NCCALCSIZE = 0x0083;
+        const int WM_NCACTIVATE = 0x0086;
 
         switch (msg)
         {
+            case WM_NCCALCSIZE:
+                // Return 0 to make the entire window client area (no non-client border)
+                handled = true;
+                return IntPtr.Zero;
+
+            case WM_NCACTIVATE:
+                // Suppress non-client area repaint on activate/deactivate to prevent border flash
+                handled = true;
+                return (IntPtr)1;
+
             case WM_GETMINMAXINFO:
                 // Adjust maximize size to respect taskbar
                 WmGetMinMaxInfo(hwnd, lParam);
