@@ -121,6 +121,7 @@ public partial class MainWindow : Window
                 {
                     ClearTileLayout();
                     BuildTileLayout(_viewModel.CurrentTileLayout);
+                    SuppressBorder();
                 }
             });
         };
@@ -488,6 +489,10 @@ public partial class MainWindow : Window
                 source.CompositionTarget.BackgroundColor = bgBrush.Color;
             }
         }
+
+        // Extend DWM frame and suppress non-client border
+        SuppressBorder();
+
         // Create resize grip overlay windows at the window edges
         _resizeHelper = new WindowResizeHelper(hwnd);
 
@@ -573,6 +578,64 @@ public partial class MainWindow : Window
         }
 
         return IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Forces a frame recalculation on Wind's window, triggering WM_NCCALCSIZE
+    /// to re-eliminate the non-client border.
+    /// </summary>
+    private static void RefreshWindowFrame(IntPtr hwnd)
+    {
+        const uint SWP_NOMOVE = 0x0002;
+        const uint SWP_NOSIZE = 0x0001;
+        NativeMethods.SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED);
+    }
+
+    /// <summary>
+    /// Re-applies all border suppression measures. Must be called after operations
+    /// that can reset the window frame, such as embedding child HWNDs via HwndHost.
+    /// </summary>
+    private void SuppressBorder()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        // Strip border-related styles that WPF or Windows may have added
+        int style = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_STYLE);
+        int cleanStyle = style & ~(int)(
+            NativeMethods.WS_THICKFRAME | NativeMethods.WS_BORDER |
+            NativeMethods.WS_DLGFRAME | NativeMethods.WS_CAPTION);
+        if (cleanStyle != style)
+            NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_STYLE, cleanStyle);
+
+        // Force frame recalculation (triggers WM_NCCALCSIZE → returns 0)
+        RefreshWindowFrame(hwnd);
+
+        // Extend DWM frame into entire client area
+        var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        DwmExtendFrameIntoClientArea(hwnd, ref margins);
+
+        // Set DWM border color to match the application background so the
+        // 1-pixel DWM accent border blends in and appears invisible.
+        UpdateDwmBorderColor(hwnd);
+    }
+
+    /// <summary>
+    /// Sets the DWM border color to match the application's background color,
+    /// making the thin DWM accent border visually invisible.
+    /// </summary>
+    private void UpdateDwmBorderColor(IntPtr hwnd)
+    {
+        const int DWMWA_BORDER_COLOR = 34;
+        var bgBrush = TryFindResource("ApplicationBackgroundBrush") as SolidColorBrush;
+        if (bgBrush != null)
+        {
+            var c = bgBrush.Color;
+            // COLORREF is 0x00BBGGRR
+            int colorRef = (c.B << 16) | (c.G << 8) | c.R;
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
+        }
     }
 
     private static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
@@ -1178,6 +1241,7 @@ public partial class MainWindow : Window
                                     host.ResizeHostedWindow(w, h);
                             }
                         }
+                        SuppressBorder();
                     });
                 }
                 else
@@ -1251,6 +1315,10 @@ public partial class MainWindow : Window
             {
                 UpdateWindowHostSize();
                 _currentHost?.FocusHostedWindow();
+
+                // Re-apply DWM frame extension and frame recalculation to suppress
+                // Wind's border which can reappear after embedding a child HWND.
+                SuppressBorder();
             });
         }
 
