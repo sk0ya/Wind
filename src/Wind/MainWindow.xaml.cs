@@ -799,6 +799,46 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TabBarEmptyArea_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not (ScrollViewer or ScrollContentPresenter or Grid or StackPanel))
+            return;
+
+        var menu = new ContextMenu();
+        menu.Style = (Style)FindResource(typeof(ContextMenu));
+
+        // Show "折りたたみ解除" only when vertical tab bar is collapsed
+        if (_currentTabPosition is "Left" or "Right" && _isTabBarCollapsed)
+        {
+            var expandItem = new MenuItem { Header = "折りたたみ解除" };
+            expandItem.Click += (s, args) => ToggleTabBarCollapsed();
+            menu.Items.Add(expandItem);
+            menu.Items.Add(new Separator());
+        }
+
+        var minimizeItem = new MenuItem { Header = "最小化" };
+        minimizeItem.Click += (s, args) => WindowState = WindowState.Minimized;
+        menu.Items.Add(minimizeItem);
+
+        var maximizeItem = new MenuItem
+        {
+            Header = WindowState == WindowState.Maximized ? "元に戻す" : "最大化"
+        };
+        maximizeItem.Click += (s, args) =>
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        menu.Items.Add(maximizeItem);
+
+        menu.Items.Add(new Separator());
+
+        var closeItem = new MenuItem { Header = "閉じる" };
+        closeItem.Click += (s, args) => Close();
+        menu.Items.Add(closeItem);
+
+        menu.PlacementTarget = TabScrollViewer;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
     private void StartDragTracking(MouseButtonEventArgs e)
     {
         _dragStartPoint = e.GetPosition(this);
