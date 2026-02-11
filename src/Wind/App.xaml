@@ -15,6 +15,7 @@
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
             <converters:PathToIconConverter x:Key="PathToIconConverter"/>
+            <converters:AdminStatusConverter x:Key="AdminStatusConverter"/>
             <converters:ColorToBrushConverter x:Key="ColorToBrushConverter"/>
             <converters:BackgroundColorPreviewConverter x:Key="BackgroundColorPreviewConverter"/>
         </ResourceDictionary>

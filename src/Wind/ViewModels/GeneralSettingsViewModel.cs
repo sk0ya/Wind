@@ -13,6 +13,12 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private bool _runAtWindowsStartup;
 
     [ObservableProperty]
+    private bool _runAsAdmin;
+
+    [ObservableProperty]
+    private bool _isRunningAsAdmin;
+
+    [ObservableProperty]
     private string _closeWindowsOnExit = "None";
 
     [ObservableProperty]
@@ -73,6 +79,8 @@ public partial class GeneralSettingsViewModel : ObservableObject
         var settings = _settingsManager.Settings;
 
         RunAtWindowsStartup = _settingsManager.IsRunAtWindowsStartup();
+        RunAsAdmin = settings.RunAsAdmin;
+        IsRunningAsAdmin = App.IsRunningAsAdmin();
         CloseWindowsOnExit = settings.CloseWindowsOnExit;
         TabHeaderPosition = settings.TabHeaderPosition;
         EmbedCloseAction = settings.EmbedCloseAction;
@@ -84,6 +92,12 @@ public partial class GeneralSettingsViewModel : ObservableObject
     partial void OnRunAtWindowsStartupChanged(bool value)
     {
         _settingsManager.SetRunAtWindowsStartup(value);
+    }
+
+    partial void OnRunAsAdminChanged(bool value)
+    {
+        _settingsManager.Settings.RunAsAdmin = value;
+        _settingsManager.SaveSettings();
     }
 
     partial void OnCloseWindowsOnExitChanged(string value)

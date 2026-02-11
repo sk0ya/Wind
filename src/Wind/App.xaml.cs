@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
+using System.Security.Principal;
 using System.Windows;
 using System.Windows.Media;
 using Wind.Services;
@@ -43,13 +45,46 @@ public partial class App : Application
         services.AddSingleton<Views.ProcessInfoPage>();
     }
 
+    public static bool IsRunningAsAdmin()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        // Apply dark theme as base
         var settingsManager = _serviceProvider.GetRequiredService<SettingsManager>();
         var settings = settingsManager.Settings;
+
+        // Re-launch as admin if the setting is enabled and we're not already elevated
+        if (settings.RunAsAdmin && !IsRunningAsAdmin())
+        {
+            try
+            {
+                var exePath = Environment.ProcessPath;
+                if (!string.IsNullOrEmpty(exePath))
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = exePath,
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    };
+                    Process.Start(startInfo);
+                }
+            }
+            catch
+            {
+                // User cancelled UAC prompt — continue without admin
+            }
+            Shutdown();
+            return;
+        }
+
+        // Apply dark theme as base
         Wpf.Ui.Appearance.ApplicationThemeManager.Apply(Wpf.Ui.Appearance.ApplicationTheme.Dark);
 
         // Apply accent color

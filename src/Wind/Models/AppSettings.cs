@@ -3,6 +3,7 @@ namespace Wind.Models;
 public class AppSettings
 {
     public bool RunAtWindowsStartup { get; set; } = false;
+    public bool RunAsAdmin { get; set; } = false;
     public List<StartupApplication> StartupApplications { get; set; } = new();
     public List<StartupGroup> StartupGroups { get; set; } = new();
     /// <summary>
