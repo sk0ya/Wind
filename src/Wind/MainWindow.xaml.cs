@@ -968,7 +968,7 @@ public partial class MainWindow : Window
     {
         _viewModel.OpenWindowPickerCommand.Execute(null);
         _resizeHelper?.SetVisible(false);
-        _backdropWindow.Hide();
+        UpdateBackdropVisibility();
         // Hide embedded window(s) while picker is open
         if (_viewModel.IsTileVisible)
         {
@@ -1084,7 +1084,7 @@ public partial class MainWindow : Window
                     }
 
                     TileContainer.Visibility = Visibility.Collapsed;
-                    _backdropWindow.Hide();
+                    UpdateBackdropVisibility();
                     ShowContentTab(_viewModel.ActiveContentKey);
                 }
                 else
@@ -1163,7 +1163,7 @@ public partial class MainWindow : Window
             if (_viewModel.IsCommandPaletteOpen)
             {
                 _resizeHelper?.SetVisible(false);
-                _backdropWindow.Hide();
+                UpdateBackdropVisibility();
                 if (_viewModel.IsTileVisible)
                 {
                     foreach (var host in _tiledHosts)
@@ -1247,16 +1247,26 @@ public partial class MainWindow : Window
 
     private void UpdateBackdropVisibility()
     {
-        if (IsCurrentTabExplorer() && !_viewModel.IsContentTabActive
-            && !_viewModel.IsWindowPickerOpen && !_viewModel.IsCommandPaletteOpen
-            && WindowState != WindowState.Minimized)
+        if (_viewModel.IsWindowPickerOpen || _viewModel.IsCommandPaletteOpen
+            || WindowState == WindowState.Minimized)
         {
-            ShowBackdrop();
+            _backdropWindow.Hide();
+            return;
+        }
+
+        // Always show backdrop; switch color based on Explorer vs other tabs
+        if (IsCurrentTabExplorer())
+        {
+            _backdropWindow.SetExplorerColor();
         }
         else
         {
-            _backdropWindow.Hide();
+            var bgBrush = FindResource("ApplicationBackgroundBrush") as SolidColorBrush;
+            if (bgBrush != null)
+                _backdropWindow.SetColor(bgBrush.Color);
         }
+
+        ShowBackdrop();
     }
 
     private void ShowBackdrop()

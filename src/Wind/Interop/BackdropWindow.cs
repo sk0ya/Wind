@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Windows.Media;
 using Microsoft.Win32;
 
 namespace Wind.Interop;
@@ -105,7 +106,44 @@ public class BackdropWindow
     public BackdropWindow()
     {
         _instance = this;
-        _backgroundBrush = CreateSolidBrush(IsAppDarkMode() ? ExplorerDarkColor : ExplorerLightColor);
+        _backgroundBrush = CreateSolidBrush(GetExplorerBackgroundColor());
+    }
+
+    /// <summary>
+    /// Returns the Explorer background COLORREF based on the Windows theme registry.
+    /// </summary>
+    public static uint GetExplorerBackgroundColor()
+    {
+        return IsAppDarkMode() ? ExplorerDarkColor : ExplorerLightColor;
+    }
+
+    /// <summary>
+    /// Sets the backdrop color from a WPF Color.
+    /// </summary>
+    public void SetColor(Color color)
+    {
+        if (_backgroundBrush != IntPtr.Zero)
+            DeleteObject(_backgroundBrush);
+
+        uint colorRef = (uint)((color.B << 16) | (color.G << 8) | color.R);
+        _backgroundBrush = CreateSolidBrush(colorRef);
+
+        if (_hwnd != IntPtr.Zero)
+            InvalidateRect(_hwnd, IntPtr.Zero, true);
+    }
+
+    /// <summary>
+    /// Sets the backdrop color to the Explorer background (from registry).
+    /// </summary>
+    public void SetExplorerColor()
+    {
+        if (_backgroundBrush != IntPtr.Zero)
+            DeleteObject(_backgroundBrush);
+
+        _backgroundBrush = CreateSolidBrush(GetExplorerBackgroundColor());
+
+        if (_hwnd != IntPtr.Zero)
+            InvalidateRect(_hwnd, IntPtr.Zero, true);
     }
 
     private static bool IsAppDarkMode()
