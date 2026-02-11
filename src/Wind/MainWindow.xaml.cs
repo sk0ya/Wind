@@ -1176,6 +1176,26 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && _viewModel.IsWindowPickerOpen)
+        {
+            _viewModel.CloseWindowPickerCommand.Execute(null);
+            RestoreEmbeddedWindow();
+            e.Handled = true;
+        }
+    }
+
+    private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.XButton1 && _viewModel.IsWindowPickerOpen)
+        {
+            _viewModel.CloseWindowPickerCommand.Execute(null);
+            RestoreEmbeddedWindow();
+            e.Handled = true;
+        }
+    }
+
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.CurrentWindowHost))

@@ -18,7 +18,9 @@
         AllowsTransparency="False"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
-        StateChanged="Window_StateChanged">
+        StateChanged="Window_StateChanged"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        PreviewMouseDown="Window_PreviewMouseDown">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibility"/>
