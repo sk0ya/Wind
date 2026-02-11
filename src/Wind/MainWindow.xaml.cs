@@ -612,13 +612,9 @@ public partial class MainWindow : Window
         // Force frame recalculation (triggers WM_NCCALCSIZE → returns 0)
         RefreshWindowFrame(hwnd);
 
-        // Extend DWM frame into entire client area
-        var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
-        DwmExtendFrameIntoClientArea(hwnd, ref margins);
-
         // Set DWM border color to match the application background so the
         // 1-pixel DWM accent border blends in and appears invisible.
-        UpdateDwmBorderColor(hwnd);
+        // UpdateDwmBorderColor(hwnd);
     }
 
     /// <summary>
