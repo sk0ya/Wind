@@ -162,29 +162,4 @@ public partial class WindowHost
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
-    private static bool IsChromiumWindow(IntPtr hwnd)
-    {
-        var className = NativeMethods.GetWindowClassName(hwnd);
-        // Chrome, Edge, and other Chromium-based browsers use Chrome_WidgetWin_*
-        return className.StartsWith("Chrome_WidgetWin");
-    }
-
-    /// <summary>
-    /// Office apps (Word, Excel, PowerPoint, etc.) break when made WS_CHILD
-    /// because they use their own complex rendering pipeline (Direct2D/DirectComposition)
-    /// and assume a top-level window for input handling.
-    /// </summary>
-    private static bool IsOfficeWindow(IntPtr hwnd)
-    {
-        var className = NativeMethods.GetWindowClassName(hwnd);
-        return className switch
-        {
-            "OpusApp" => true,          // Word
-            "XLMAIN" => true,           // Excel
-            "PPTFrameClass" => true,    // PowerPoint
-            "rctrl_renwnd32" => true,   // Outlook (main window)
-            "Framework::CFrame" => true, // OneNote / newer Office windows
-            _ => false
-        };
-    }
 }

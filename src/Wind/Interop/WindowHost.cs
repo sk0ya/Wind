@@ -12,8 +12,6 @@ public partial class WindowHost : HwndHost
     private int _originalExStyle;
     private NativeMethods.RECT _originalRect;
     private bool _isHostedWindowClosed;
-    private bool _isChromium;
-    private bool _isOffice;
 
     public IntPtr HostedWindowHandle => _hostedWindowHandle;
 
@@ -47,8 +45,6 @@ public partial class WindowHost : HwndHost
     public WindowHost(IntPtr windowHandle)
     {
         _hostedWindowHandle = windowHandle;
-        _isChromium = IsChromiumWindow(windowHandle);
-        _isOffice = IsOfficeWindow(windowHandle);
         _currentInstance = this; // Store current instance for WndProc access
 
         // Save original state immediately for later restoration.

@@ -80,19 +80,12 @@ public partial class WindowHost
                           NativeMethods.WS_MINIMIZEBOX | NativeMethods.WS_MAXIMIZEBOX |
                           NativeMethods.WS_SYSMENU | NativeMethods.WS_BORDER | NativeMethods.WS_DLGFRAME);
 
-        if (_isChromium || _isOffice)
-        {
-            // Chromium and Office apps break when made WS_CHILD — their rendering
-            // pipelines and input handling assume a top-level window.
-            // Use WS_POPUP + SetParent so the window is clipped to the host
-            // but still receives keyboard input normally.
-            newStyle &= ~(int)NativeMethods.WS_CHILD;
-            newStyle |= unchecked((int)NativeMethods.WS_POPUP) | (int)NativeMethods.WS_VISIBLE;
-        }
-        else
-        {
-            newStyle |= (int)(NativeMethods.WS_CHILD | NativeMethods.WS_VISIBLE);
-        }
+        // Use WS_POPUP + SetParent for all windows.  Many apps (Chromium, Office,
+        // Electron, etc.) break when made WS_CHILD because their rendering and input
+        // pipelines assume a top-level window.  WS_POPUP + SetParent keeps the window
+        // clipped to the host while preserving normal keyboard/mouse input.
+        newStyle &= ~(int)NativeMethods.WS_CHILD;
+        newStyle |= unchecked((int)NativeMethods.WS_POPUP) | (int)NativeMethods.WS_VISIBLE;
 
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE, newStyle);
 
