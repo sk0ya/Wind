@@ -8,7 +8,7 @@ using Wind.Views;
 
 namespace Wind.Services;
 
-public class TabManager
+public partial class TabManager
 {
     private readonly WindowManager _windowManager;
     private readonly SettingsManager _settingsManager;
@@ -129,12 +129,12 @@ public class TabManager
 
         var tab = new TabItem { ContentKey = contentKey };
         tab.Title = title;
-        
+
         // Set Wind icon for content tabs
         try
         {
             var iconUri = new Uri("pack://application:,,,/Assets/Wind.ico");
-            tab.Icon = new System.Windows.Media.Imaging.BitmapImage(iconUri);
+            tab.Icon = new BitmapImage(iconUri);
         }
         catch
         {
@@ -295,26 +295,26 @@ public class TabManager
                 }
                 RemoveTab(tab);
                 break;
-                
+
             case "ReleaseEmbed":
                 // Update tile layout if this tab was tiled
                 UpdateTileForRemovedTab(tab);
-                
+
                 // Release embedding and restore to desktop
                 if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
                 {
                     _windowManager.ReleaseWindow(host);
                     _windowHosts.Remove(tab.Id);
                 }
-                
+
                 // Remove from group if in one
                 tab.Group?.RemoveTab(tab);
-                
+
                 var index = Tabs.IndexOf(tab);
                 Tabs.Remove(tab);
-                
+
                 TabRemoved?.Invoke(this, tab);
-                
+
                 // Select adjacent tab
                 if (ActiveTab == tab)
                 {
@@ -329,12 +329,12 @@ public class TabManager
                     }
                 }
                 break;
-                
+
             case "CloseWind":
                 // Close Wind application
                 CloseWindRequested?.Invoke(this, EventArgs.Empty);
                 break;
-                
+
             default:
                 // Fallback to default behavior
                 goto case "CloseApp";
@@ -378,180 +378,5 @@ public class TabManager
         if (oldIndex < 0 || oldIndex == newIndex) return;
 
         Tabs.Move(oldIndex, newIndex);
-    }
-
-    public TabGroup CreateGroup(string name, Color color)
-    {
-        var group = new TabGroup(name, color);
-        Groups.Add(group);
-        return group;
-    }
-
-    public void AddTabToGroup(TabItem tab, TabGroup group)
-    {
-        // Remove from existing group if any
-        tab.Group?.RemoveTab(tab);
-
-        group.AddTab(tab);
-    }
-
-    public void RemoveTabFromGroup(TabItem tab)
-    {
-        tab.Group?.RemoveTab(tab);
-    }
-
-    public void DeleteGroup(TabGroup group)
-    {
-        // Move all tabs out of the group
-        foreach (var tab in group.Tabs.ToList())
-        {
-            tab.Group = null;
-        }
-        group.Tabs.Clear();
-        Groups.Remove(group);
-    }
-
-    public void CleanupInvalidTabs()
-    {
-        var invalidTabs = Tabs.Where(t =>
-            !t.IsContentTab &&
-            !t.IsWebTab &&
-            (t.Window?.Handle == IntPtr.Zero ||
-            !_windowManager.IsWindowValid(t.Window!.Handle))).ToList();
-
-        foreach (var tab in invalidTabs)
-        {
-            // ウィンドウは既に無効なので ReleaseWindow せずに追跡だけ解除する
-            OnHostedWindowClosed(tab);
-        }
-    }
-
-    public void StopCleanupTimer()
-    {
-        _cleanupTimer.Stop();
-    }
-
-    public void CloseStartupTabs()
-    {
-        foreach (var tab in Tabs.ToList())
-        {
-            if (tab.IsContentTab) continue;
-            if (tab.IsWebTab) { RemoveWebTabControl(tab.Id); continue; }
-
-            if (_windowHosts.TryGetValue(tab.Id, out var host))
-            {
-                if (tab.IsLaunchedAtStartup)
-                {
-                    if (tab.Window?.Handle != IntPtr.Zero)
-                    {
-                        NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                    }
-                }
-                else
-                {
-                    _windowManager.ReleaseWindow(host);
-                }
-                _windowHosts.Remove(tab.Id);
-            }
-        }
-        Tabs.Clear();
-        ActiveTab = null;
-    }
-
-    public void CloseAllTabs()
-    {
-        foreach (var tab in Tabs.ToList())
-        {
-            if (tab.IsContentTab) continue;
-            if (tab.IsWebTab) { RemoveWebTabControl(tab.Id); continue; }
-
-            if (tab.Window?.Handle != IntPtr.Zero)
-            {
-                NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-            }
-            if (_windowHosts.TryGetValue(tab.Id, out var host))
-            {
-                _windowHosts.Remove(tab.Id);
-            }
-        }
-        Tabs.Clear();
-        ActiveTab = null;
-    }
-
-    public void ReleaseAllTabs()
-    {
-        // First, release all window hosts before modifying the collection.
-        // This prevents UI binding updates from triggering DestroyWindowCore
-        // on WindowHost objects before SetParent has detached the hosted windows.
-        foreach (var tab in Tabs.ToList())
-        {
-            if (tab.IsContentTab) continue;
-            if (tab.IsWebTab) { RemoveWebTabControl(tab.Id); continue; }
-
-            if (_windowHosts.TryGetValue(tab.Id, out var host))
-            {
-                _windowManager.ReleaseWindow(host);
-                _windowHosts.Remove(tab.Id);
-            }
-        }
-
-        // Now safe to clear the collection and update UI
-        Tabs.Clear();
-        ActiveTab = null;
-    }
-
-    public void ToggleMultiSelect(TabItem tab)
-    {
-        tab.IsMultiSelected = !tab.IsMultiSelected;
-    }
-
-    public void ClearMultiSelection()
-    {
-        foreach (var tab in Tabs)
-        {
-            tab.IsMultiSelected = false;
-        }
-    }
-
-    public IReadOnlyList<TabItem> GetMultiSelectedTabs()
-    {
-        return Tabs.Where(t => t.IsMultiSelected).ToList();
-    }
-
-    public void StartTile(IEnumerable<TabItem> tabs)
-    {
-        // Stop existing tile if any
-        StopTile();
-
-        var tabList = tabs.ToList();
-        if (tabList.Count < 2) return;
-
-        CurrentTileLayout = new TileLayout(tabList);
-        ClearMultiSelection();
-    }
-
-    public void StopTile()
-    {
-        if (CurrentTileLayout == null) return;
-
-        CurrentTileLayout.Deactivate();
-        CurrentTileLayout = null;
-    }
-
-    private void UpdateTileForRemovedTab(TabItem tab)
-    {
-        if (CurrentTileLayout == null || !tab.IsTiled) return;
-
-        var hasEnoughTabs = CurrentTileLayout.RemoveTab(tab);
-        if (hasEnoughTabs)
-        {
-            // Rebuild the tile layout with remaining tabs
-            TileLayoutUpdated?.Invoke(this, EventArgs.Empty);
-        }
-        else
-        {
-            // Not enough tabs to tile, stop tiling
-            StopTile();
-        }
     }
 }
