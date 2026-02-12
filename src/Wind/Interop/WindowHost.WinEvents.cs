@@ -80,11 +80,12 @@ public partial class WindowHost
                           NativeMethods.WS_MINIMIZEBOX | NativeMethods.WS_MAXIMIZEBOX |
                           NativeMethods.WS_SYSMENU | NativeMethods.WS_BORDER | NativeMethods.WS_DLGFRAME);
 
-        if (_isChromium)
+        if (_isChromium || _isOffice)
         {
-            // Chromium apps break when made WS_CHILD — their multi-process input
-            // pipeline assumes a top-level window.  Use WS_POPUP + SetParent so the
-            // window is clipped to the host but still receives keyboard input normally.
+            // Chromium and Office apps break when made WS_CHILD — their rendering
+            // pipelines and input handling assume a top-level window.
+            // Use WS_POPUP + SetParent so the window is clipped to the host
+            // but still receives keyboard input normally.
             newStyle &= ~(int)NativeMethods.WS_CHILD;
             newStyle |= unchecked((int)NativeMethods.WS_POPUP) | (int)NativeMethods.WS_VISIBLE;
         }
