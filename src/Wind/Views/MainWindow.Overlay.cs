@@ -4,7 +4,7 @@ using Wind.Models;
 using Wind.Services;
 using Wind.ViewModels;
 
-namespace Wind;
+namespace Wind.Views;
 
 public partial class MainWindow
 {

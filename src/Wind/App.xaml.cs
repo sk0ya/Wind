@@ -40,12 +40,12 @@ public partial class App : Application
         services.AddSingleton<CommandPaletteViewModel>();
 
         // Views
-        services.AddSingleton<MainWindow>();
-        services.AddSingleton<Views.GeneralSettingsPage>();
-        services.AddSingleton<Views.HotkeySettingsPage>();
-        services.AddSingleton<Views.StartupSettingsPage>();
-        services.AddSingleton<Views.QuickLaunchSettingsPage>();
-        services.AddSingleton<Views.ProcessInfoPage>();
+        services.AddSingleton<Views.MainWindow>();
+        services.AddSingleton<Views.Settings.GeneralSettingsPage>();
+        services.AddSingleton<Views.Settings.HotkeySettingsPage>();
+        services.AddSingleton<Views.Settings.StartupSettingsPage>();
+        services.AddSingleton<Views.Settings.QuickLaunchSettingsPage>();
+        services.AddSingleton<Views.Settings.ProcessInfoPage>();
     }
 
     public static bool IsRunningAsAdmin()
@@ -112,7 +112,7 @@ public partial class App : Application
         GeneralSettingsViewModel.ApplyBackgroundColorStatic(settings.BackgroundColor);
 
         // Show main window first
-        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+        var mainWindow = _serviceProvider.GetRequiredService<Views.MainWindow>();
         mainWindow.Show();
 
         // Snapshot existing window handles before launching, so we can detect

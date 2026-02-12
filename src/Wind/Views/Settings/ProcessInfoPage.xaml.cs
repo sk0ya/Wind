@@ -1,7 +1,7 @@
 using System.Windows.Controls;
 using Wind.ViewModels;
 
-namespace Wind.Views;
+namespace Wind.Views.Settings;
 
 public partial class ProcessInfoPage : UserControl
 {

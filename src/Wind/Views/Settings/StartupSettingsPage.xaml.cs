@@ -4,7 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Wind.ViewModels;
 
-namespace Wind.Views;
+namespace Wind.Views.Settings;
 
 public partial class StartupSettingsPage : UserControl
 {

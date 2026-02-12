@@ -7,7 +7,7 @@ using System.Windows.Threading;
 using Wind.Interop;
 using Wind.ViewModels;
 
-namespace Wind;
+namespace Wind.Views;
 
 public partial class MainWindow
 {

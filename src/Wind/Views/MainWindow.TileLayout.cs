@@ -4,7 +4,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Wind.Models;
 
-namespace Wind;
+namespace Wind.Views;
 
 public partial class MainWindow
 {

@@ -2,9 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Wind.Services;
-using Wind.Views;
-
-namespace Wind;
+namespace Wind.Views;
 
 public partial class MainWindow
 {

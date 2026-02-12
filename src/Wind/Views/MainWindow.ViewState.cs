@@ -3,9 +3,9 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Wind.Services;
 using Wind.ViewModels;
-using Wind.Views;
+using Wind.Views.Settings;
 
-namespace Wind;
+namespace Wind.Views;
 
 public partial class MainWindow
 {

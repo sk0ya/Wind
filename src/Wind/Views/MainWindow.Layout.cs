@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
-namespace Wind;
+namespace Wind.Views;
 
 public partial class MainWindow
 {

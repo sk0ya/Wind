@@ -2,7 +2,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Wind.ViewModels;
 
-namespace Wind.Views;
+namespace Wind.Views.Settings;
 
 public partial class QuickLaunchSettingsPage : UserControl
 {
