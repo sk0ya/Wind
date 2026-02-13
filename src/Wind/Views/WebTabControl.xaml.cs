@@ -34,6 +34,15 @@ public partial class WebTabControl : UserControl, IDisposable
         var env = await _envService.GetEnvironmentAsync();
         await WebView.EnsureCoreWebView2Async(env);
 
+        WebView.CoreWebView2.PermissionRequested += (s, e) =>
+        {
+            if (e.PermissionKind == Microsoft.Web.WebView2.Core.CoreWebView2PermissionKind.FileReadWrite)
+            {
+                e.State = Microsoft.Web.WebView2.Core.CoreWebView2PermissionState.Allow;
+            }
+            e.SavesInProfile = true;
+        };
+
         WebView.CoreWebView2.DocumentTitleChanged += (s, e) =>
         {
             Dispatcher.Invoke(() =>
