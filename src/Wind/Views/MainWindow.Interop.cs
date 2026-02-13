@@ -126,26 +126,18 @@ public partial class MainWindow
         // Force frame recalculation (triggers WM_NCCALCSIZE → returns 0)
         RefreshWindowFrame(hwnd);
 
-        // Set DWM border color to match the application background so the
-        // 1-pixel DWM accent border blends in and appears invisible.
-        // UpdateDwmBorderColor(hwnd);
+        // Tell DWM to not draw the 1px accent border at all.
+        // Style stripping alone is unreliable because WPF/HwndHost can re-add
+        // WS_THICKFRAME faster than SuppressBorder can strip it, leaving the
+        // DWM compositor in an inconsistent state.
+        HideDwmBorder(hwnd);
     }
 
-    /// <summary>
-    /// Sets the DWM border color to match the application's background color,
-    /// making the thin DWM accent border visually invisible.
-    /// </summary>
-    private void UpdateDwmBorderColor(IntPtr hwnd)
+    private static void HideDwmBorder(IntPtr hwnd)
     {
         const int DWMWA_BORDER_COLOR = 34;
-        var bgBrush = TryFindResource("ApplicationBackgroundBrush") as SolidColorBrush;
-        if (bgBrush != null)
-        {
-            var c = bgBrush.Color;
-            // COLORREF is 0x00BBGGRR
-            int colorRef = (c.B << 16) | (c.G << 8) | c.R;
-            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
-        }
+        int colorNone = unchecked((int)0xFFFFFFFE); // DWMWA_COLOR_NONE
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorNone, sizeof(int));
     }
 
     private static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
