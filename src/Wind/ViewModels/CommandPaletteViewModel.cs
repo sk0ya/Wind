@@ -151,6 +151,7 @@ public partial class CommandPaletteViewModel : ObservableObject
                 Icon = SymbolRegular.ChevronDown24
             });
             Items.Add(new CommandPaletteItem
+                
             {
                 Name = "全グループを折りたたみ",
                 Category = "Group",

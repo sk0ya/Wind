@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -60,20 +61,27 @@ public partial class WebTabControl : UserControl, IDisposable
                 {
                     using var stream = await WebView.CoreWebView2.GetFaviconAsync(
                         Microsoft.Web.WebView2.Core.CoreWebView2FaviconImageFormat.Png);
-                    if (stream != null && stream.Length > 0)
+                    if (stream != null)
                     {
-                        stream.Position = 0;
-                        await Dispatcher.InvokeAsync(() =>
+                        var ms = new MemoryStream();
+                        await stream.CopyToAsync(ms);
+                        if (ms.Length > 0)
                         {
-                            var bitmap = new BitmapImage();
-                            bitmap.BeginInit();
-                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                            bitmap.StreamSource = stream;
-                            bitmap.EndInit();
-                            bitmap.Freeze();
-                            FaviconChanged?.Invoke(this, bitmap);
-                        });
-                        return;
+                            ms.Position = 0;
+                            await Dispatcher.InvokeAsync(() =>
+                            {
+                                var bitmap = new BitmapImage();
+                                bitmap.BeginInit();
+                                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                                bitmap.StreamSource = ms;
+                                bitmap.EndInit();
+                                bitmap.Freeze();
+                                ms.Dispose();
+                                FaviconChanged?.Invoke(this, bitmap);
+                            });
+                            return;
+                        }
+                        ms.Dispose();
                     }
                 }
             }

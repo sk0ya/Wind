@@ -155,20 +155,36 @@ public partial class TabManager
         return tab;
     }
 
+    private static ImageSource? _globeIcon;
+    private static ImageSource GlobeIcon => _globeIcon ??= CreateGlobeIcon();
+
+    private static ImageSource CreateGlobeIcon()
+    {
+        var group = new DrawingGroup();
+        var pen = new Pen(new SolidColorBrush(System.Windows.Media.Color.FromRgb(140, 140, 140)), 1.4);
+        pen.Freeze();
+
+        // Outer circle
+        group.Children.Add(new GeometryDrawing(null, pen,
+            new EllipseGeometry(new System.Windows.Point(16, 16), 13, 13)));
+        // Vertical meridian
+        group.Children.Add(new GeometryDrawing(null, pen,
+            new EllipseGeometry(new System.Windows.Point(16, 16), 5.5, 13)));
+        // Equator
+        group.Children.Add(new GeometryDrawing(null, pen,
+            new LineGeometry(new System.Windows.Point(3, 16), new System.Windows.Point(29, 16))));
+
+        group.Freeze();
+        var image = new DrawingImage(group);
+        image.Freeze();
+        return image;
+    }
+
     public TabItem AddWebTab(string url, bool activate = true)
     {
         var tab = new TabItem { WebUrl = url };
         tab.Title = "New Tab";
-
-        try
-        {
-            var iconUri = new Uri("pack://application:,,,/Assets/Wind.ico");
-            tab.Icon = new BitmapImage(iconUri);
-        }
-        catch
-        {
-            tab.Icon = null;
-        }
+        tab.Icon = GlobeIcon;
 
         Tabs.Add(tab);
         TabAdded?.Invoke(this, tab);
