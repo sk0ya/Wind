@@ -109,6 +109,7 @@ public partial class TabManager
         host.MinimizeRequested += (s, e) => MinimizeRequested?.Invoke(this, EventArgs.Empty);
         host.MaximizeRequested += (s, e) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
         host.MoveRequested += (dx, dy) => MoveRequested?.Invoke(dx, dy);
+        host.NewWindowDetected += hwnd => OnNewWindowDetected(hwnd);
 
         Tabs.Add(tab);
 
@@ -212,6 +213,26 @@ public partial class TabManager
             control.Dispose();
             _webTabControls.Remove(tabId);
         }
+    }
+
+    private void OnNewWindowDetected(IntPtr hwnd)
+    {
+        if (!_dispatcher.CheckAccess())
+        {
+            _dispatcher.BeginInvoke(() => OnNewWindowDetected(hwnd));
+            return;
+        }
+
+        // Skip if already embedded
+        if (_windowManager.IsEmbedded(hwnd)) return;
+
+        // Skip if already tracked as a tab
+        if (Tabs.Any(t => t.Window?.Handle == hwnd)) return;
+
+        var windowInfo = WindowInfo.FromHandle(hwnd);
+        if (windowInfo == null) return;
+
+        AddTab(windowInfo, activate: true);
     }
 
     private void OnHostedWindowClosed(TabItem tab)

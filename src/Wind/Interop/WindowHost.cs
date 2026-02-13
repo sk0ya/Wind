@@ -24,6 +24,12 @@ public partial class WindowHost : HwndHost
     /// </summary>
     public event Action<int, int>? MoveRequested;
 
+    /// <summary>
+    /// Fired when the hosted process creates a new top-level window.
+    /// The parameter is the HWND of the new window.
+    /// </summary>
+    public event Action<IntPtr>? NewWindowDetected;
+
     // Background color property
     private Color _backgroundColor = Colors.Black;
 

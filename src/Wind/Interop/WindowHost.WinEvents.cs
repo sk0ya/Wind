@@ -24,6 +24,7 @@ public partial class WindowHost
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
+    private const uint EVENT_OBJECT_SHOW = 0x8002;
     private const uint EVENT_OBJECT_DESTROY = 0x8001;
     private const uint EVENT_SYSTEM_MOVESIZESTART = 0x000A;
     private const uint EVENT_SYSTEM_MOVESIZEEND = 0x000B;
@@ -36,6 +37,7 @@ public partial class WindowHost
     private IntPtr _winEventHookMinimize;
     private IntPtr _winEventHookLocation;
     private IntPtr _winEventHookDestroy;
+    private IntPtr _winEventHookShow;
     private WinEventDelegate? _winEventProc;
     private bool _wasMaximized;
 
@@ -203,6 +205,11 @@ public partial class WindowHost
         _winEventHookDestroy = SetWinEventHook(
             EVENT_OBJECT_DESTROY, EVENT_OBJECT_DESTROY,
             IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
+
+        // Hook for new window detection (同プロセスの新規ウィンドウを検出)
+        _winEventHookShow = SetWinEventHook(
+            EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW,
+            IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
     }
 
     private void RemoveWinEventHook()
@@ -227,13 +234,63 @@ public partial class WindowHost
             UnhookWinEvent(_winEventHookDestroy);
             _winEventHookDestroy = IntPtr.Zero;
         }
+        if (_winEventHookShow != IntPtr.Zero)
+        {
+            UnhookWinEvent(_winEventHookShow);
+            _winEventHookShow = IntPtr.Zero;
+        }
         _winEventProc = null;
+    }
+
+    private static readonly HashSet<string> _ephemeralWindowClasses = new(StringComparer.Ordinal)
+    {
+        "#32768",             // Menu
+        "#32769",             // Desktop
+        "#32770",             // Dialog (MessageBox etc.)
+        "#32771",             // Task switch
+        "tooltips_class32",   // Tooltip
+        "SysShadow",          // Shadow
+        "IME",                // IME window
+        "MSCTFIME UI",        // IME UI
+    };
+
+    private bool IsEmbeddableWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || hwnd == _hostedWindowHandle) return false;
+        if (!NativeMethods.IsWindowVisible(hwnd)) return false;
+
+        int style = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_STYLE);
+        int exStyle = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE);
+
+        // Skip child windows
+        if ((style & (int)NativeMethods.WS_CHILD) != 0) return false;
+
+        // Skip tool windows (tooltips, etc.)
+        if ((exStyle & (int)NativeMethods.WS_EX_TOOLWINDOW) != 0) return false;
+
+        // Must have a title
+        string title = NativeMethods.GetWindowTitle(hwnd);
+        if (string.IsNullOrWhiteSpace(title)) return false;
+
+        // Skip ephemeral window classes
+        string className = NativeMethods.GetWindowClassName(hwnd);
+        if (_ephemeralWindowClasses.Contains(className)) return false;
+
+        return true;
     }
 
     private void WinEventCallback(
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
     {
+        // Detect new windows from the same process
+        if (eventType == EVENT_OBJECT_SHOW && idObject == OBJID_WINDOW &&
+            hwnd != _hostedWindowHandle && IsEmbeddableWindow(hwnd))
+        {
+            NewWindowDetected?.Invoke(hwnd);
+            return;
+        }
+
         if (hwnd != _hostedWindowHandle) return;
 
         if (eventType == EVENT_OBJECT_DESTROY && idObject == OBJID_WINDOW)

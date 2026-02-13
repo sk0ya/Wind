@@ -120,6 +120,11 @@ public class WindowManager
         }
     }
 
+    public bool IsEmbedded(IntPtr handle)
+    {
+        return _embeddedWindows.Contains(handle);
+    }
+
     public bool IsWindowValid(IntPtr handle)
     {
         if (handle == IntPtr.Zero) return false;
