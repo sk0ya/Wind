@@ -7,17 +7,18 @@ public partial class WindowHost : HwndHost
 {
     private IntPtr _hostedWindowHandle;
     private IntPtr _hwndHost;
-    private IntPtr _originalParent;
     private int _originalStyle;
     private int _originalExStyle;
     private NativeMethods.RECT _originalRect;
     private bool _isHostedWindowClosed;
 
     public IntPtr HostedWindowHandle => _hostedWindowHandle;
+    public int HostedProcessId { get; }
 
     public event EventHandler? HostedWindowClosed;
     public event EventHandler? MinimizeRequested;
     public event EventHandler? MaximizeRequested;
+
     /// <summary>
     /// Fired when the hosted window is being dragged. Parameters are (dx, dy) in physical pixels.
     /// </summary>
@@ -25,6 +26,7 @@ public partial class WindowHost : HwndHost
 
     // Background color property
     private Color _backgroundColor = Colors.Black;
+
     public Color BackgroundColor
     {
         get => _backgroundColor;
@@ -47,6 +49,10 @@ public partial class WindowHost : HwndHost
         _hostedWindowHandle = windowHandle;
         _currentInstance = this; // Store current instance for WndProc access
 
+        // Store the process ID so we can force-kill if needed at shutdown.
+        NativeMethods.GetWindowThreadProcessId(windowHandle, out uint pid);
+        HostedProcessId = (int)pid;
+
         // Save original state immediately for later restoration.
         _originalStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE);
         _originalExStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE);
@@ -56,8 +62,8 @@ public partial class WindowHost : HwndHost
         // The window will be shown inside Wind when BuildWindowCore runs
         // (i.e. when this host enters the WPF visual tree).
         int newExStyle = _originalExStyle;
-        newExStyle &= ~(int)NativeMethods.WS_EX_APPWINDOW;
-        newExStyle |= (int)NativeMethods.WS_EX_TOOLWINDOW;
+        newExStyle &= ~(int) NativeMethods.WS_EX_APPWINDOW;
+        newExStyle |= (int) NativeMethods.WS_EX_TOOLWINDOW;
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, newExStyle);
         NativeMethods.ShowWindow(_hostedWindowHandle, 0); // SW_HIDE = 0
     }

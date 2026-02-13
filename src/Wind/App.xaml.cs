@@ -24,6 +24,7 @@ public partial class App : Application
     {
         // Services
         services.AddSingleton<WindowManager>();
+        services.AddSingleton<ProcessTracker>();
         services.AddSingleton<TabManager>();
         services.AddSingleton<SettingsManager>();
         services.AddSingleton<HotkeyManager>();
@@ -58,6 +59,10 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Register last-resort cleanup for abnormal exit (e.g. unhandled exceptions).
+        // Note: This does NOT fire when the process is killed via Process.Kill/taskkill.
+        AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
 
         var settingsManager = _serviceProvider.GetRequiredService<SettingsManager>();
         var settings = settingsManager.Settings;
@@ -111,6 +116,10 @@ public partial class App : Application
         // Apply background color
         GeneralSettingsViewModel.ApplyBackgroundColorStatic(settings.BackgroundColor);
 
+        // Kill zombie processes left over from a previous session that was force-killed.
+        var processTracker = _serviceProvider.GetRequiredService<ProcessTracker>();
+        processTracker.CleanupZombies();
+
         // Show main window first
         var mainWindow = _serviceProvider.GetRequiredService<Views.MainWindow>();
         mainWindow.Show();
@@ -147,6 +156,39 @@ public partial class App : Application
         }
         mainWindow.Activate();
         mainWindow.Focus();
+    }
+
+    private void OnProcessExit(object? sender, EventArgs e)
+    {
+        // Last-resort cleanup: if Wind exits without going through MainWindow_Closing
+        // (e.g. Environment.FailFast, StackOverflow, or unhandled native exception),
+        // try to release or kill embedded processes so they don't become invisible zombies.
+        try
+        {
+            var tabManager = _serviceProvider.GetService<TabManager>();
+            if (tabManager == null) return;
+
+            var pids = tabManager.GetTrackedProcessIds();
+            foreach (var pid in pids)
+            {
+                try
+                {
+                    using var proc = Process.GetProcessById(pid);
+                    if (!proc.HasExited)
+                    {
+                        proc.Kill();
+                    }
+                }
+                catch
+                {
+                    // Process already exited or access denied
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup; ignore failures
+        }
     }
 
     public static T GetService<T>() where T : class

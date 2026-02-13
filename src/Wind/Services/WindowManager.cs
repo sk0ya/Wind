@@ -29,7 +29,7 @@ public class WindowManager
         var windows = new List<WindowInfo>();
         var currentProcessId = Environment.ProcessId;
 
-        NativeMethods.EnumWindows((hWnd, lParam) =>
+        NativeMethods.EnumWindows((hWnd, _) =>
         {
             if (!IsValidWindow(hWnd, currentProcessId))
                 return true;
@@ -117,14 +117,6 @@ public class WindowManager
         if (handle != IntPtr.Zero)
         {
             _embeddedWindows.Remove(handle);
-        }
-    }
-
-    public void ReleaseAllWindows(IEnumerable<WindowHost> hosts)
-    {
-        foreach (var host in hosts.ToList())
-        {
-            ReleaseWindow(host);
         }
     }
 

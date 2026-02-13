@@ -47,7 +47,8 @@ public class BackdropWindow
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy,
+        uint uFlags);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -100,7 +101,7 @@ public class BackdropWindow
     }
 
     // Explorer dark mode: #191919, light mode: #FFFFFF
-    private const uint ExplorerDarkColor = 0x191919;  // BGR: 0x191919
+    private const uint ExplorerDarkColor = 0x191919; // BGR: 0x191919
     private const uint ExplorerLightColor = 0xFFFFFF; // BGR: 0xFFFFFF
 
     public BackdropWindow()
@@ -125,7 +126,7 @@ public class BackdropWindow
         if (_backgroundBrush != IntPtr.Zero)
             DeleteObject(_backgroundBrush);
 
-        uint colorRef = (uint)((color.B << 16) | (color.G << 8) | color.R);
+        uint colorRef = (uint) ((color.B << 16) | (color.G << 8) | color.R);
         _backgroundBrush = CreateSolidBrush(colorRef);
 
         if (_hwnd != IntPtr.Zero)

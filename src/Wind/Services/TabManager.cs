@@ -12,6 +12,7 @@ public partial class TabManager
 {
     private readonly WindowManager _windowManager;
     private readonly SettingsManager _settingsManager;
+    private readonly ProcessTracker _processTracker;
     private readonly Dictionary<Guid, WindowHost> _windowHosts = new();
     private readonly Dictionary<Guid, WebTabControl> _webTabControls = new();
     private readonly Dispatcher _dispatcher;
@@ -62,10 +63,11 @@ public partial class TabManager
     public event Action<int, int>? MoveRequested;
     public event EventHandler? CloseWindRequested;
 
-    public TabManager(WindowManager windowManager, SettingsManager settingsManager)
+    public TabManager(WindowManager windowManager, SettingsManager settingsManager, ProcessTracker processTracker)
     {
         _windowManager = windowManager;
         _settingsManager = settingsManager;
+        _processTracker = processTracker;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
         // フォールバック: 定期的に無効なタブを検出・除去する
@@ -96,6 +98,8 @@ public partial class TabManager
 
         var host = _windowManager.EmbedWindow(windowInfo.Handle);
         if (host == null) return null;
+
+        _processTracker.Add(host.HostedProcessId);
 
         var tab = new TabItem(windowInfo);
         _windowHosts[tab.Id] = host;
@@ -209,6 +213,7 @@ public partial class TabManager
         // Remove the tab without trying to release the window (it's already closed)
         if (_windowHosts.TryGetValue(tab.Id, out var host))
         {
+            _processTracker.Remove(host.HostedProcessId);
             _windowHosts.Remove(tab.Id);
         }
 
@@ -246,6 +251,7 @@ public partial class TabManager
         }
         else if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
         {
+            _processTracker.Remove(host.HostedProcessId);
             _windowManager.ReleaseWindow(host);
             _windowHosts.Remove(tab.Id);
         }
@@ -288,10 +294,10 @@ public partial class TabManager
         switch (closeAction)
         {
             case "CloseApp":
-                // Default behavior: close the embedded application
+                // Default behavior: close the embedded application (non-blocking)
                 if (tab.Window?.Handle != IntPtr.Zero)
                 {
-                    NativeMethods.SendMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    NativeMethods.PostMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
                 RemoveTab(tab);
                 break;
@@ -303,6 +309,7 @@ public partial class TabManager
                 // Release embedding and restore to desktop
                 if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
                 {
+                    _processTracker.Remove(host.HostedProcessId);
                     _windowManager.ReleaseWindow(host);
                     _windowHosts.Remove(tab.Id);
                 }

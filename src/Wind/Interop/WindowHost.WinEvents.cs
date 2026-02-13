@@ -20,9 +20,6 @@ public partial class WindowHost
     [DllImport("user32.dll")]
     private static extern bool IsZoomed(IntPtr hWnd);
 
-    [DllImport("user32.dll")]
-    private static extern bool IsIconic(IntPtr hWnd);
-
     private delegate void WinEventDelegate(
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
@@ -96,7 +93,7 @@ public partial class WindowHost
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, newExStyle);
 
         // Set parent to our host window
-        _originalParent = NativeMethods.SetParent(_hostedWindowHandle, _hwndHost);
+        NativeMethods.SetParent(_hostedWindowHandle, _hwndHost);
 
         // Position the window at 0,0 within the host
         NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero, 0, 0, 100, 100,
