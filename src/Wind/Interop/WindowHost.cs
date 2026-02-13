@@ -47,7 +47,6 @@ public partial class WindowHost : HwndHost
     public WindowHost(IntPtr windowHandle)
     {
         _hostedWindowHandle = windowHandle;
-        _currentInstance = this; // Store current instance for WndProc access
 
         // Store the process ID so we can force-kill if needed at shutdown.
         NativeMethods.GetWindowThreadProcessId(windowHandle, out uint pid);
@@ -72,14 +71,15 @@ public partial class WindowHost : HwndHost
     {
         if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
 
-        // Clear current instance reference
-        if (_currentInstance == this)
-        {
-            _currentInstance = null;
-        }
+        // Remove from instance mapping
+        if (_hwndHost != IntPtr.Zero)
+            _instances.Remove(_hwndHost);
 
         // Remove event hook before releasing
         RemoveWinEventHook();
+
+        // Remove clipping region before restoring
+        NativeMethods.SetWindowRgn(_hostedWindowHandle, IntPtr.Zero, false);
 
         // Restore parent (to desktop)
         NativeMethods.SetParent(_hostedWindowHandle, IntPtr.Zero);
@@ -106,7 +106,18 @@ public partial class WindowHost : HwndHost
         // _hwndHost position is managed by HwndHost base class — do not move it.
         if (!_isHostedMoving)
         {
-            NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, width, height, true);
+            // Use SetWindowPos with SWP_NOCOPYBITS to prevent Windows from copying
+            // old pixel content during resize, which causes ghost artifacts.
+            NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
+                0, 0, width, height,
+                NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOCOPYBITS);
+
+            // Clip the WS_POPUP window to the host's client area.
+            // Unlike WS_CHILD, WS_POPUP windows are not automatically clipped by
+            // their parent, so we enforce it with a window region.
+            // SetWindowRgn takes ownership of the region handle — do not delete it.
+            IntPtr rgn = NativeMethods.CreateRectRgn(0, 0, width, height);
+            NativeMethods.SetWindowRgn(_hostedWindowHandle, rgn, true);
         }
     }
 

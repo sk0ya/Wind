@@ -77,7 +77,7 @@ public partial class WindowHost
         public int Bottom;
     }
 
-    private static WindowHost? _currentInstance;
+    private static readonly Dictionary<IntPtr, WindowHost> _instances = new();
 
     private static void EnsureClassRegistered()
     {
@@ -118,10 +118,8 @@ public partial class WindowHost
 
     private static WindowHost? GetWindowHost(IntPtr hWnd)
     {
-        // This is a simplified approach - in a real implementation,
-        // you might want to store a mapping of hWnd to WindowHost instances
-        // For now, we'll use a static approach
-        return _currentInstance;
+        _instances.TryGetValue(hWnd, out var host);
+        return host;
     }
 
     private static void FillBackground(IntPtr hdc, IntPtr hWnd, Color color)

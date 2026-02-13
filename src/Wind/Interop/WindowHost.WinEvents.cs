@@ -71,6 +71,9 @@ public partial class WindowHost
             return new HandleRef(this, IntPtr.Zero);
         }
 
+        // Register this instance for WndProc lookup
+        _instances[_hwndHost] = this;
+
         // Remove window decorations (original state was saved in constructor)
         int newStyle = _originalStyle;
         newStyle &= ~(int)(NativeMethods.WS_CAPTION | NativeMethods.WS_THICKFRAME |
@@ -110,11 +113,9 @@ public partial class WindowHost
 
     protected override void DestroyWindowCore(HandleRef hwnd)
     {
-        // Clear current instance reference
-        if (_currentInstance == this)
-        {
-            _currentInstance = null;
-        }
+        // Remove from instance mapping
+        if (_hwndHost != IntPtr.Zero)
+            _instances.Remove(_hwndHost);
 
         // Detach the hosted window before destroying the host HWND.
         // If the hosted window is still a child of _hwndHost when DestroyWindow
@@ -122,6 +123,7 @@ public partial class WindowHost
         if (_hostedWindowHandle != IntPtr.Zero && !_isHostedWindowClosed)
         {
             RemoveWinEventHook();
+            NativeMethods.SetWindowRgn(_hostedWindowHandle, IntPtr.Zero, false);
             NativeMethods.SetParent(_hostedWindowHandle, IntPtr.Zero);
             NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE, _originalStyle);
             NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, _originalExStyle);
@@ -261,7 +263,13 @@ public partial class WindowHost
                 if (_hwndHost != IntPtr.Zero)
                 {
                     NativeMethods.GetWindowRect(_hwndHost, out var hostRect);
-                    NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, hostRect.Width, hostRect.Height, true);
+                    int w = hostRect.Width, h = hostRect.Height;
+                    NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
+                        0, 0, w, h,
+                        NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOCOPYBITS);
+
+                    IntPtr rgn = NativeMethods.CreateRectRgn(0, 0, w, h);
+                    NativeMethods.SetWindowRgn(_hostedWindowHandle, rgn, true);
                 }
             }
         }
@@ -302,7 +310,9 @@ public partial class WindowHost
                 if (dx != 0 || dy != 0)
                 {
                     MoveRequested?.Invoke(dx, dy);
-                    NativeMethods.MoveWindow(_hostedWindowHandle, 0, 0, hostRect.Width, hostRect.Height, true);
+                    NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
+                        0, 0, hostRect.Width, hostRect.Height,
+                        NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOCOPYBITS);
                 }
             }
         }
