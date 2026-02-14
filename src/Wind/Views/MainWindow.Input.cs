@@ -59,12 +59,21 @@ public partial class MainWindow
         var menu = new ContextMenu();
         menu.Style = (Style)FindResource(typeof(ContextMenu));
 
-        // Show "折りたたみ解除" only when vertical tab bar is collapsed
-        if (_currentTabPosition is "Left" or "Right" && _isTabBarCollapsed)
+        // Show fold/unfold option for vertical tab bar
+        if (_currentTabPosition is "Left" or "Right")
         {
-            var expandItem = new MenuItem { Header = "折りたたみ解除" };
-            expandItem.Click += (s, args) => ToggleTabBarCollapsed();
-            menu.Items.Add(expandItem);
+            if (_isTabBarCollapsed)
+            {
+                var expandItem = new MenuItem { Header = "折りたたみ解除" };
+                expandItem.Click += (s, args) => ToggleTabBarCollapsed();
+                menu.Items.Add(expandItem);
+            }
+            else
+            {
+                var collapseItem = new MenuItem { Header = "折りたたみ" };
+                collapseItem.Click += (s, args) => ToggleTabBarCollapsed();
+                menu.Items.Add(collapseItem);
+            }
             menu.Items.Add(new Separator());
         }
 
