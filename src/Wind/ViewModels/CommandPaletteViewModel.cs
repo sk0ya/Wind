@@ -139,6 +139,16 @@ public partial class CommandPaletteViewModel : ObservableObject
             });
         }
 
+        // Topmost window arrangement
+        Items.Add(new CommandPaletteItem
+        {
+            Name = "Topmostウィンドウを整列",
+            Category = "Window",
+            Description = "Arrange topmost windows from top-right",
+            Tag = "ArrangeTopmostWindows",
+            Icon = SymbolRegular.AppsList24
+        });
+
         // Group expand/collapse
         if (_tabManager.Groups.Count > 0)
         {

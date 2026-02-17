@@ -149,4 +149,88 @@ public class WindowManager
         if (handle == IntPtr.Zero) return;
         NativeMethods.SetForegroundWindow(handle);
     }
+
+    public void ArrangeTopmostWindows()
+    {
+        var currentProcessId = Environment.ProcessId;
+        var topmostWindows = new List<(IntPtr Handle, NativeMethods.RECT Rect, string Title)>();
+
+        NativeMethods.EnumWindows((hWnd, _) =>
+        {
+            if (!NativeMethods.IsWindowVisible(hWnd)) return true;
+
+            int style = NativeMethods.GetWindowLong(hWnd, NativeMethods.GWL_STYLE);
+            int exStyle = NativeMethods.GetWindowLong(hWnd, NativeMethods.GWL_EXSTYLE);
+
+            if ((style & (int)NativeMethods.WS_CHILD) != 0) return true;
+            if ((exStyle & (int)NativeMethods.WS_EX_TOPMOST) == 0) return true;
+
+            NativeMethods.GetWindowThreadProcessId(hWnd, out uint processId);
+            if (processId == currentProcessId) return true;
+
+            string className = NativeMethods.GetWindowClassName(hWnd);
+            if (IsSystemWindow(className)) return true;
+
+            NativeMethods.GetWindowRect(hWnd, out var rect);
+            // Skip tiny helper windows (e.g. WPF internal 1x1 windows)
+            if (rect.Width < 10 || rect.Height < 10) return true;
+
+            string windowTitle = NativeMethods.GetWindowTitle(hWnd);
+            if (string.IsNullOrWhiteSpace(windowTitle)) windowTitle = $"(0x{hWnd:X})";
+            topmostWindows.Add((hWnd, rect, windowTitle));
+
+            return true;
+        }, IntPtr.Zero);
+
+        if (topmostWindows.Count == 0)
+        {
+            Debug.WriteLine("[ArrangeTopmost] No topmost windows found.");
+            return;
+        }
+
+        var workArea = new NativeMethods.RECT();
+        NativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, ref workArea, 0);
+        Debug.WriteLine($"[ArrangeTopmost] WorkArea: L={workArea.Left} T={workArea.Top} R={workArea.Right} B={workArea.Bottom}");
+
+        int x = workArea.Right;
+        int y = workArea.Top;
+        int columnMaxWidth = 0;
+
+        foreach (var (handle, rect, windowTitle) in topmostWindows)
+        {
+            int w = rect.Width;
+            int h = rect.Height;
+
+            if (y + h > workArea.Bottom)
+            {
+                x -= columnMaxWidth;
+                y = workArea.Top;
+                columnMaxWidth = 0;
+            }
+
+            int posX = x - w;
+            int posY = y;
+
+            bool result = NativeMethods.SetWindowPos(handle, NativeMethods.HWND_TOPMOST,
+                posX, posY, w, h, NativeMethods.SWP_NOACTIVATE);
+            if (!result)
+            {
+                int error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                Debug.WriteLine($"[ArrangeTopmost] {windowTitle} (0x{handle:X}) -> ({posX},{posY}) {w}x{h} SetWindowPos FAILED error={error}");
+                result = NativeMethods.MoveWindow(handle, posX, posY, w, h, true);
+                if (!result)
+                {
+                    error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                    Debug.WriteLine($"[ArrangeTopmost] {windowTitle} (0x{handle:X}) MoveWindow FAILED error={error}");
+                }
+            }
+            else
+            {
+                Debug.WriteLine($"[ArrangeTopmost] {windowTitle} (0x{handle:X}) -> ({posX},{posY}) {w}x{h} OK");
+            }
+
+            y += h;
+            if (w > columnMaxWidth) columnMaxWidth = w;
+        }
+    }
 }

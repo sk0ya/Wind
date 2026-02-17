@@ -123,6 +123,9 @@ public partial class MainWindow
                 foreach (var group in _tabManager.Groups)
                     group.IsExpanded = false;
                 break;
+            case "ArrangeTopmostWindows":
+                App.GetService<WindowManager>().ArrangeTopmostWindows();
+                break;
         }
     }
 

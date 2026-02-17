@@ -21,6 +21,9 @@ internal static class NativeMethods
 
     public const uint WS_EX_APPWINDOW = 0x00040000;
     public const uint WS_EX_TOOLWINDOW = 0x00000080;
+    public const uint WS_EX_TOPMOST = 0x00000008;
+
+    public static readonly IntPtr HWND_TOPMOST = new(-1);
 
     public const uint SWP_NOZORDER = 0x0004;
     public const uint SWP_NOACTIVATE = 0x0010;
@@ -220,6 +223,12 @@ internal static class NativeMethods
             SetForegroundWindow(hWnd);
         }
     }
+
+    public const uint SPI_GETWORKAREA = 0x0030;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref RECT pvParam, uint fWinIni);
 
     // --- Process elevation check ---
 
