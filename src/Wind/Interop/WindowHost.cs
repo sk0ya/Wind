@@ -133,4 +133,11 @@ public partial class WindowHost : HwndHost
         NativeMethods.SetForegroundWindow(_hostedWindowHandle);
         NativeMethods.SetFocus(_hostedWindowHandle);
     }
+
+    public void ForceRedraw()
+    {
+        if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
+        NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_SHOW);
+        InvalidateRect(_hostedWindowHandle, IntPtr.Zero, true);
+    }
 }

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Wind.Models;
 using Wind.Services;
 using Wind.ViewModels;
@@ -51,6 +52,21 @@ public partial class MainWindow
             _resizeHelper?.SetVisible(true);
 
         UpdateBackdropVisibility();
+
+        // WS_POPUP + SetParent の埋め込みウィンドウは、親 HWND が再表示されても
+        // 自動的に WM_PAINT が届かないため、明示的に ShowWindow + InvalidateRect で強制再描画する。
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+        {
+            if (_viewModel.IsTileVisible)
+            {
+                foreach (var host in _tiledHosts)
+                    host.ForceRedraw();
+            }
+            else
+            {
+                _currentHost?.ForceRedraw();
+            }
+        });
     }
 
     private void OnCommandPaletteItemExecuted(object? sender, CommandPaletteItem item)
