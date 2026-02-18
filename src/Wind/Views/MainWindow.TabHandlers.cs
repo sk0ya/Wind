@@ -71,6 +71,15 @@ public partial class MainWindow
         }
     }
 
+    private void TabItem_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Middle && sender is FrameworkElement element && element.Tag is Models.TabItem tab)
+        {
+            _viewModel.CloseTabCommand.Execute(tab);
+            e.Handled = true;
+        }
+    }
+
     private void TabItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement element && element.Tag is Models.TabItem tab)

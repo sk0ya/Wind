@@ -231,6 +231,7 @@
                     Height="36"
                     MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                    MouseDown="TabItem_MouseDown"
                     Tag="{Binding}">
                 <Border.ContextMenu>
                     <ContextMenu Tag="{Binding}" Opened="TabContextMenu_Opened">
@@ -304,6 +305,7 @@
             <Border Style="{StaticResource TabItemVerticalStyle}"
                     MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                    MouseDown="TabItem_MouseDown"
                     Tag="{Binding}">
                 <Border.ContextMenu>
                     <ContextMenu Tag="{Binding}" Opened="TabContextMenu_Opened">
@@ -382,6 +384,7 @@
             <Border Style="{StaticResource TabItemVerticalStyle}"
                     MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                     MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                    MouseDown="TabItem_MouseDown"
                     Tag="{Binding}"
                     HorizontalAlignment="Center"
                     Padding="8,6">
