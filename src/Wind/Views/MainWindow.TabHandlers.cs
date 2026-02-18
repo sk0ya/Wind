@@ -65,6 +65,11 @@ public partial class MainWindow
             {
                 _tabManager.ClearMultiSelection();
                 _viewModel.SelectTabCommand.Execute(tab);
+
+                // ドラッグ開始を追跡
+                _dragTab = tab;
+                _tabDragStartPoint = e.GetPosition(this);
+                _isDraggingTab = false;
             }
 
             e.Handled = true;

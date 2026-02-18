@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows.Media;
 using Wind.Models;
+using Wind.Services;
 
 namespace Wind.ViewModels;
 
@@ -167,6 +168,45 @@ public partial class MainViewModel
             _tabManager.StartTile(orderedTabs);
             StatusMessage = $"Tiled {orderedTabs.Count} tabs";
             break; // Only one tile layout can be active at a time
+        }
+    }
+
+    /// <summary>
+    /// 設定の StartupApplications の順番通りにスタートアップタブを並び替える。
+    /// </summary>
+    public void ApplyStartupTabOrder(List<StartupApplication> startupApps)
+    {
+        var orderedTabs = new List<TabItem>();
+
+        foreach (var app in startupApps)
+        {
+            TabItem? match;
+
+            if (SettingsManager.IsUrl(app.Path))
+            {
+                // URL タブはURLで照合
+                match = _tabManager.Tabs.FirstOrDefault(t =>
+                    t.IsWebTab &&
+                    t.IsLaunchedAtStartup &&
+                    string.Equals(t.WebUrl, app.Path, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                // ウィンドウタブは実行ファイルパスで照合
+                match = _tabManager.Tabs.FirstOrDefault(t =>
+                    !t.IsContentTab && !t.IsWebTab &&
+                    t.IsLaunchedAtStartup &&
+                    string.Equals(t.Window?.ExecutablePath, app.Path, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (match != null && !orderedTabs.Contains(match))
+                orderedTabs.Add(match);
+        }
+
+        // 設定順にタブを並び替える
+        for (int i = 0; i < orderedTabs.Count; i++)
+        {
+            _tabManager.MoveTab(orderedTabs[i], i);
         }
     }
 

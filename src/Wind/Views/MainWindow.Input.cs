@@ -111,6 +111,30 @@ public partial class MainWindow
     {
         base.OnPreviewMouseMove(e);
 
+        // タブドラッグ処理（ウィンドウドラッグより優先）
+        if (_dragTab != null)
+        {
+            var currentPos = e.GetPosition(this);
+
+            if (!_isDraggingTab && _tabDragStartPoint.HasValue)
+            {
+                var diff = currentPos - _tabDragStartPoint.Value;
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    _isDraggingTab = true;
+                }
+            }
+
+            if (_isDraggingTab)
+            {
+                UpdateTabDragPosition(currentPos);
+            }
+
+            return; // タブドラッグ中はウィンドウドラッグを無効化
+        }
+
+        // ウィンドウドラッグ処理
         if (_dragStartPoint.HasValue && !_isDragging)
         {
             var currentPos = e.GetPosition(this);
@@ -147,6 +171,14 @@ public partial class MainWindow
     protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnPreviewMouseLeftButtonUp(e);
+
+        if (_dragTab != null)
+        {
+            _dragTab = null;
+            _tabDragStartPoint = null;
+            _isDraggingTab = false;
+            return;
+        }
 
         if (_dragStartPoint.HasValue)
         {

@@ -136,15 +136,30 @@ public partial class App : Application
 
         var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
 
-        // Open URL startup items as web tabs
+        var tabManager = _serviceProvider.GetRequiredService<TabManager>();
+
+        // URL startup items をスタートアップフラグ付きで Webタブとして開く
         foreach (var urlApp in urlApps)
         {
-            viewModel.OpenWebTabCommand.Execute(urlApp.Path);
+            var webTab = tabManager.AddWebTab(urlApp.Path, activate: false);
+            webTab.IsLaunchedAtStartup = true;
         }
 
         if (processConfigs.Count > 0)
         {
             await viewModel.EmbedStartupProcessesAsync(processConfigs, settingsManager.Settings, preExistingWindows);
+        }
+        else if (urlApps.Count > 0)
+        {
+            // プロセス埋め込みがない場合は最後のタブをアクティブ化
+            if (tabManager.Tabs.Count > 0)
+                tabManager.ActiveTab = tabManager.Tabs.Last();
+        }
+
+        // 設定の順番通りにスタートアップタブを並び替える
+        if (urlApps.Count > 0 || processConfigs.Count > 0)
+        {
+            viewModel.ApplyStartupTabOrder(settingsManager.Settings.StartupApplications);
         }
 
         // Startup apps may have stolen foreground focus.
