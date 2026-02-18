@@ -312,7 +312,6 @@ public partial class MainWindow
             TabBarArea.MinWidth = 0;
             TabBarArea.MaxWidth = double.PositiveInfinity;
             TabBarArea.Width = 40;
-            AddWindowButton.Visibility = Visibility.Collapsed;
 
             // Hide window control button text, keep icons compact
             foreach (UIElement child in WindowControlsPanel.Children)
@@ -331,7 +330,6 @@ public partial class MainWindow
             TabBarArea.ClearValue(WidthProperty);
             TabBarArea.MinWidth = 180;
             TabBarArea.MaxWidth = 300;
-            AddWindowButton.Visibility = Visibility.Visible;
 
             SetButtonSizesForMode(isVertical: true);
         }
