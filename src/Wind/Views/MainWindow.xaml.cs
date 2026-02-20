@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
     private readonly BackdropWindow _backdropWindow = new();
     private readonly Dictionary<Guid, WebTabControl> _webTabControls = new();
     private Guid? _currentWebTabId;
+    private readonly HashSet<int> _monitoredProcessIds = new();
 
     public MainWindow()
     {
@@ -169,6 +171,28 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        var setting = _settingsManager.Settings.CloseWindowsOnExit;
+        if (setting == "All" || setting == "StartupOnly")
+        {
+            bool startupOnly = setting == "StartupOnly";
+            var runningApps = _tabManager.GetManagedAppsWithHandles(startupOnly)
+                .Where(a => IsProcessRunning(a.ProcessId))
+                .ToList();
+
+            if (runningApps.Count > 0)
+            {
+                // 実行中のアプリがあれば Close をキャンセルし WM_CLOSE を送る
+                e.Cancel = true;
+                foreach (var (hwnd, pid) in runningApps)
+                {
+                    NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    if (_monitoredProcessIds.Add(pid))
+                        MonitorProcessExit(pid);
+                }
+                return;
+            }
+        }
+
         _settingsManager.TabHeaderPositionChanged -= OnTabHeaderPositionChanged;
 
         // Dispose all web tab controls
@@ -182,6 +206,37 @@ public partial class MainWindow : Window
         _resizeHelper?.Dispose();
         _resizeHelper = null;
         _viewModel.Cleanup();
+    }
+
+    private static bool IsProcessRunning(int pid)
+    {
+        try
+        {
+            using var proc = Process.GetProcessById(pid);
+            return !proc.HasExited;
+        }
+        catch { return false; }
+    }
+
+    private void MonitorProcessExit(int pid)
+    {
+        Task.Run(() =>
+        {
+            try
+            {
+                using var proc = Process.GetProcessById(pid);
+                proc.WaitForExit();
+            }
+            catch { }
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                _monitoredProcessIds.Remove(pid);
+                // 監視中のアプリが全て終了したら Wind を閉じる
+                if (_monitoredProcessIds.Count == 0)
+                    Close();
+            });
+        });
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)

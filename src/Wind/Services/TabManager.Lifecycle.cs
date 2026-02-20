@@ -64,6 +64,27 @@ public partial class TabManager
         _processTracker.Clear();
     }
 
+    /// <summary>
+    /// Returns (Handle, ProcessId) pairs for all managed embedded apps that should be closed.
+    /// </summary>
+    public List<(IntPtr Handle, int ProcessId)> GetManagedAppsWithHandles(bool startupOnly)
+    {
+        var result = new List<(IntPtr Handle, int ProcessId)>();
+        foreach (var tab in Tabs.ToList())
+        {
+            if (tab.IsContentTab || tab.IsWebTab) continue;
+            if (startupOnly && !tab.IsLaunchedAtStartup) continue;
+
+            if (_windowHosts.TryGetValue(tab.Id, out var host) &&
+                tab.Window?.Handle != IntPtr.Zero &&
+                host.HostedProcessId != 0)
+            {
+                result.Add((tab.Window!.Handle, host.HostedProcessId));
+            }
+        }
+        return result;
+    }
+
     public void CloseAllTabs()
     {
         var processIdsToKill = new List<int>();
