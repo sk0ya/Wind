@@ -18,6 +18,7 @@ public partial class WindowHost : HwndHost
     public event EventHandler? HostedWindowClosed;
     public event EventHandler? MinimizeRequested;
     public event EventHandler? MaximizeRequested;
+    public event EventHandler? BringToFrontRequested;
 
     /// <summary>
     /// Fired when the hosted window is being dragged. Parameters are (dx, dy) in physical pixels.
@@ -130,8 +131,20 @@ public partial class WindowHost : HwndHost
     public void FocusHostedWindow()
     {
         if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
-        NativeMethods.SetForegroundWindow(_hostedWindowHandle);
+
+        // SetForegroundWindow を使うと EVENT_SYSTEM_FOREGROUND が発火して
+        // BringToFrontRequested との誤発火ループが起きる。
+        // AttachThreadInput + SetFocus でフォーカスのみ移す（フォアグラウンドは変えない）。
+        var currentThread = NativeMethods.GetCurrentThreadId();
+        var hostedThread = NativeMethods.GetWindowThreadProcessId(_hostedWindowHandle, out _);
+
+        if (hostedThread != 0 && hostedThread != currentThread)
+            NativeMethods.AttachThreadInput(currentThread, hostedThread, true);
+
         NativeMethods.SetFocus(_hostedWindowHandle);
+
+        if (hostedThread != 0 && hostedThread != currentThread)
+            NativeMethods.AttachThreadInput(currentThread, hostedThread, false);
     }
 
     public void ForceRedraw()

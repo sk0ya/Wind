@@ -62,6 +62,7 @@ public partial class TabManager
     public event EventHandler? MaximizeRequested;
     public event Action<int, int>? MoveRequested;
     public event EventHandler? CloseWindRequested;
+    public event EventHandler? BringToFrontRequested;
 
     public TabManager(WindowManager windowManager, SettingsManager settingsManager, ProcessTracker processTracker)
     {
@@ -110,6 +111,7 @@ public partial class TabManager
         host.MaximizeRequested += (s, e) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
         host.MoveRequested += (dx, dy) => MoveRequested?.Invoke(dx, dy);
         host.NewWindowDetected += hwnd => OnNewWindowDetected(hwnd);
+        host.BringToFrontRequested += (s, e) => BringToFrontRequested?.Invoke(this, EventArgs.Empty);
 
         Tabs.Add(tab);
 

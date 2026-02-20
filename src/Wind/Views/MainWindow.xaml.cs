@@ -118,6 +118,12 @@ public partial class MainWindow : Window
             }
         };
         _tabManager.CloseWindRequested += (s, e) => { Close(); };
+        _tabManager.BringToFrontRequested += (s, e) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero)
+                NativeMethods.ForceForegroundWindow(hwnd);
+        };
 
         _tabManager.TileLayoutUpdated += (s, e) =>
         {

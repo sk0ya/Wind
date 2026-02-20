@@ -24,6 +24,7 @@ public partial class WindowHost
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
+    private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
     private const uint EVENT_OBJECT_SHOW = 0x8002;
     private const uint EVENT_OBJECT_DESTROY = 0x8001;
     private const uint EVENT_SYSTEM_MOVESIZESTART = 0x000A;
@@ -38,8 +39,11 @@ public partial class WindowHost
     private IntPtr _winEventHookLocation;
     private IntPtr _winEventHookDestroy;
     private IntPtr _winEventHookShow;
+    private IntPtr _winEventHookForeground;
     private WinEventDelegate? _winEventProc;
     private bool _wasMaximized;
+    // EVENT_SYSTEM_FOREGROUND で直前のフォアグラウンドウィンドウを追跡する
+    private IntPtr _lastForeground;
 
     // Move tracking state
     private bool _isHostedMoving;
@@ -210,6 +214,12 @@ public partial class WindowHost
         _winEventHookShow = SetWinEventHook(
             EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW,
             IntPtr.Zero, _winEventProc, processId, 0, WINEVENT_OUTOFCONTEXT);
+
+        // Hook for foreground changes (グローバル: 埋め込みアプリがフォアグラウンドになったことを検知する)
+        // プロセスIDを0にしてグローバルにしないと、別プロセスのフォアグラウンドイベントを取得できない
+        _winEventHookForeground = SetWinEventHook(
+            EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
+            IntPtr.Zero, _winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
 
     private void RemoveWinEventHook()
@@ -238,6 +248,11 @@ public partial class WindowHost
         {
             UnhookWinEvent(_winEventHookShow);
             _winEventHookShow = IntPtr.Zero;
+        }
+        if (_winEventHookForeground != IntPtr.Zero)
+        {
+            UnhookWinEvent(_winEventHookForeground);
+            _winEventHookForeground = IntPtr.Zero;
         }
         _winEventProc = null;
     }
@@ -288,6 +303,47 @@ public partial class WindowHost
             hwnd != _hostedWindowHandle && IsEmbeddableWindow(hwnd))
         {
             NewWindowDetected?.Invoke(hwnd);
+            return;
+        }
+
+        // WindがバックグラウンドのときにWS_POPUPの埋め込みアプリがフォアグラウンドになった場合、
+        // Windを前面に持ってくるよう要求する。
+        // WS_POPUPはSetParentで親を設定してもクリック時のアクティベーションが親に伝播しないため、
+        // EVENT_SYSTEM_FOREGROUNDで明示的に検知する必要がある。
+        if (eventType == EVENT_SYSTEM_FOREGROUND)
+        {
+            var prevForeground = _lastForeground;
+            _lastForeground = hwnd;
+
+            if (hwnd == _hostedWindowHandle)
+            {
+                var windRoot = _hwndHost != IntPtr.Zero
+                    ? NativeMethods.GetAncestor(_hwndHost, NativeMethods.GA_ROOT)
+                    : IntPtr.Zero;
+                if (windRoot == IntPtr.Zero) return;
+
+                // Windがすでにフォアグラウンドなら何もしない
+                if (NativeMethods.GetForegroundWindow() == windRoot) return;
+
+                // 直前のフォアグラウンドを確認して誤発火を防ぐ
+                if (prevForeground != IntPtr.Zero)
+                {
+                    // コンテキストメニュー・IME等のエフェメラルウィンドウが閉じた場合は無視
+                    var prevClass = NativeMethods.GetWindowClassName(prevForeground);
+                    if (_ephemeralWindowClasses.Contains(prevClass)) return;
+
+                    // 埋め込みアプリと同一プロセスのウィンドウが閉じた場合は無視
+                    // (アプリ内ポップアップ・サブウィンドウなど)
+                    NativeMethods.GetWindowThreadProcessId(prevForeground, out uint prevPid);
+                    if (prevPid == (uint)HostedProcessId) return;
+
+                    // Windと同一プロセスのウィンドウが閉じた場合は無視
+                    NativeMethods.GetWindowThreadProcessId(windRoot, out uint windPid);
+                    if (prevPid == windPid) return;
+                }
+
+                BringToFrontRequested?.Invoke(this, EventArgs.Empty);
+            }
             return;
         }
 
