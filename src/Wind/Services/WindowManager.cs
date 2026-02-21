@@ -193,7 +193,7 @@ public class WindowManager
         Debug.WriteLine($"[ArrangeTopmost] WorkArea: L={workArea.Left} T={workArea.Top} R={workArea.Right} B={workArea.Bottom}");
 
         int x = workArea.Right;
-        int y = workArea.Top;
+        int y = workArea.Bottom;
         int columnMaxWidth = 0;
 
         foreach (var (handle, rect, windowTitle) in topmostWindows)
@@ -201,15 +201,15 @@ public class WindowManager
             int w = rect.Width;
             int h = rect.Height;
 
-            if (y + h > workArea.Bottom)
+            if (y - h < workArea.Top)
             {
                 x -= columnMaxWidth;
-                y = workArea.Top;
+                y = workArea.Bottom;
                 columnMaxWidth = 0;
             }
 
             int posX = x - w;
-            int posY = y;
+            int posY = y - h;
 
             bool result = NativeMethods.SetWindowPos(handle, NativeMethods.HWND_TOPMOST,
                 posX, posY, w, h, NativeMethods.SWP_NOACTIVATE);
@@ -229,7 +229,7 @@ public class WindowManager
                 Debug.WriteLine($"[ArrangeTopmost] {windowTitle} (0x{handle:X}) -> ({posX},{posY}) {w}x{h} OK");
             }
 
-            y += h;
+            y -= h;
             if (w > columnMaxWidth) columnMaxWidth = w;
         }
     }
