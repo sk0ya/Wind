@@ -95,14 +95,9 @@ public partial class WindowHost
 
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE, newStyle);
 
-        // Remove taskbar button
-        int newExStyle = _originalExStyle;
-        newExStyle &= ~(int)NativeMethods.WS_EX_APPWINDOW;
-        newExStyle |= (int)NativeMethods.WS_EX_TOOLWINDOW;
-        NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, newExStyle);
-
         // Set parent to our host window
         NativeMethods.SetParent(_hostedWindowHandle, _hwndHost);
+        ApplyEmbeddedExStyle();
 
         // Position the window at 0,0 within the host
         NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero, 0, 0, 100, 100,
@@ -110,6 +105,7 @@ public partial class WindowHost
 
         // Make sure it's visible
         NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_SHOW);
+        UpdateTaskbarButtonRegistration();
 
         // Set up event hook to monitor hosted window events
         SetupWinEventHook();
@@ -128,6 +124,7 @@ public partial class WindowHost
         // is called, Windows will cascade-destroy it, killing the hosted process's window.
         if (_hostedWindowHandle != IntPtr.Zero && !_isHostedWindowClosed)
         {
+            UnregisterTaskbarButton();
             RemoveWinEventHook();
             NativeMethods.SetWindowRgn(_hostedWindowHandle, IntPtr.Zero, false);
             NativeMethods.SetParent(_hostedWindowHandle, IntPtr.Zero);
@@ -171,6 +168,7 @@ public partial class WindowHost
             if (eventCode == WM_DESTROY)
             {
                 // Hosted window is being destroyed
+                UnregisterTaskbarButton();
                 _isHostedWindowClosed = true;
                 _hostedWindowHandle = IntPtr.Zero;
                 HostedWindowClosed?.Invoke(this, EventArgs.Empty);
@@ -355,6 +353,7 @@ public partial class WindowHost
             // WS_POPUP ウィンドウでは WM_PARENTNOTIFY が送信されないため、ここで検出する
             if (!_isHostedWindowClosed)
             {
+                UnregisterTaskbarButton();
                 _isHostedWindowClosed = true;
                 RemoveWinEventHook();
                 _hostedWindowHandle = IntPtr.Zero;

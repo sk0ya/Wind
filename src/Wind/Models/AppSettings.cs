@@ -20,6 +20,11 @@ public class AppSettings
     /// "CloseWind" = close Wind application
     /// </summary>
     public string EmbedCloseAction { get; set; } = "CloseApp";
+    /// <summary>
+    /// True = hide embedded apps from taskbar while hosted in Wind (default),
+    /// False = keep embedded apps visible in taskbar.
+    /// </summary>
+    public bool HideEmbeddedFromTaskbar { get; set; } = true;
     public string AccentColor { get; set; } = "#0078D4";
     public bool UseSystemAccent { get; set; } = false;
     public string BackgroundColor { get; set; } = "";  // Empty = use theme default

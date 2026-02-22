@@ -7,9 +7,17 @@ namespace Wind.Services;
 
 public class WindowManager
 {
+    private readonly SettingsManager _settingsManager;
     private readonly HashSet<IntPtr> _embeddedWindows = new();
+    private readonly Dictionary<IntPtr, WindowHost> _embeddedHosts = new();
 
     public ObservableCollection<WindowInfo> AvailableWindows { get; } = new();
+
+    public WindowManager(SettingsManager settingsManager)
+    {
+        _settingsManager = settingsManager;
+        _settingsManager.HideEmbeddedFromTaskbarChanged += OnHideEmbeddedFromTaskbarChanged;
+    }
 
     public void RefreshWindowList()
     {
@@ -101,8 +109,14 @@ public class WindowManager
             NativeMethods.ShowWindow(handle, NativeMethods.SW_RESTORE);
         }
 
-        var host = new WindowHost(handle);
+        var host = new WindowHost(handle, _settingsManager.Settings.HideEmbeddedFromTaskbar);
         _embeddedWindows.Add(handle);
+        _embeddedHosts[handle] = host;
+        host.HostedWindowClosed += (_, _) =>
+        {
+            _embeddedWindows.Remove(handle);
+            _embeddedHosts.Remove(handle);
+        };
 
         return host;
     }
@@ -117,12 +131,21 @@ public class WindowManager
         if (handle != IntPtr.Zero)
         {
             _embeddedWindows.Remove(handle);
+            _embeddedHosts.Remove(handle);
         }
     }
 
     public bool IsEmbedded(IntPtr handle)
     {
         return _embeddedWindows.Contains(handle);
+    }
+
+    private void OnHideEmbeddedFromTaskbarChanged(bool hideFromTaskbar)
+    {
+        foreach (var host in _embeddedHosts.Values.ToList())
+        {
+            host.SetHideFromTaskbar(hideFromTaskbar);
+        }
     }
 
     public bool IsWindowValid(IntPtr handle)

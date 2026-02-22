@@ -86,6 +86,19 @@
                 </Grid>
             </Border>
 
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="6" Padding="12,8" Margin="0,0,0,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="埋め込み中はタスクバーに表示しない" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding HideEmbeddedFromTaskbar, Mode=TwoWay}"/>
+                </Grid>
+            </Border>
+
             <!-- Appearance Section -->
             <TextBlock Text="Appearance" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,6"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>

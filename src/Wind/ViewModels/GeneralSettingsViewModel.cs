@@ -28,6 +28,9 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private string _embedCloseAction = "CloseApp";
 
     [ObservableProperty]
+    private bool _hideEmbeddedFromTaskbar = true;
+
+    [ObservableProperty]
     private string _selectedAccentColor = "#0078D4";
 
     [ObservableProperty]
@@ -84,6 +87,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
         CloseWindowsOnExit = settings.CloseWindowsOnExit;
         TabHeaderPosition = settings.TabHeaderPosition;
         EmbedCloseAction = settings.EmbedCloseAction;
+        HideEmbeddedFromTaskbar = settings.HideEmbeddedFromTaskbar;
         SelectedAccentColor = settings.AccentColor;
         UseSystemAccent = settings.UseSystemAccent;
         SelectedBackgroundColor = settings.BackgroundColor;
@@ -115,6 +119,11 @@ public partial class GeneralSettingsViewModel : ObservableObject
     {
         _settingsManager.Settings.EmbedCloseAction = value;
         _settingsManager.SaveSettings();
+    }
+
+    partial void OnHideEmbeddedFromTaskbarChanged(bool value)
+    {
+        _settingsManager.SetHideEmbeddedFromTaskbar(value);
     }
 
     partial void OnSelectedAccentColorChanged(string value)

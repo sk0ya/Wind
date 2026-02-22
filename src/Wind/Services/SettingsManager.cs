@@ -18,6 +18,7 @@ public class SettingsManager
     public AppSettings Settings => _settings;
 
     public event Action<string>? TabHeaderPositionChanged;
+    public event Action<bool>? HideEmbeddedFromTaskbarChanged;
 
     public SettingsManager()
     {
@@ -245,6 +246,16 @@ public class SettingsManager
         _settings.TabHeaderPosition = position;
         SaveSettings();
         TabHeaderPositionChanged?.Invoke(position);
+    }
+
+    public void SetHideEmbeddedFromTaskbar(bool hideFromTaskbar)
+    {
+        if (_settings.HideEmbeddedFromTaskbar == hideFromTaskbar)
+            return;
+
+        _settings.HideEmbeddedFromTaskbar = hideFromTaskbar;
+        SaveSettings();
+        HideEmbeddedFromTaskbarChanged?.Invoke(hideFromTaskbar);
     }
 
     public static bool IsUrl(string path)

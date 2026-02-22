@@ -11,6 +11,8 @@ public partial class WindowHost : HwndHost
     private int _originalExStyle;
     private NativeMethods.RECT _originalRect;
     private bool _isHostedWindowClosed;
+    private bool _hideFromTaskbar;
+    private bool _taskbarButtonRegistered;
 
     public IntPtr HostedWindowHandle => _hostedWindowHandle;
     public int HostedProcessId { get; }
@@ -51,9 +53,10 @@ public partial class WindowHost : HwndHost
         }
     }
 
-    public WindowHost(IntPtr windowHandle)
+    public WindowHost(IntPtr windowHandle, bool hideFromTaskbar)
     {
         _hostedWindowHandle = windowHandle;
+        _hideFromTaskbar = hideFromTaskbar;
 
         // Store the process ID so we can force-kill if needed at shutdown.
         NativeMethods.GetWindowThreadProcessId(windowHandle, out uint pid);
@@ -64,19 +67,100 @@ public partial class WindowHost : HwndHost
         _originalExStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE);
         NativeMethods.GetWindowRect(_hostedWindowHandle, out _originalRect);
 
-        // Remove taskbar button and hide the window right away.
-        // The window will be shown inside Wind when BuildWindowCore runs
-        // (i.e. when this host enters the WPF visual tree).
+        // Apply initial taskbar style.
+        // We hide immediately only when taskbar hiding is enabled to avoid a brief
+        // floating flash before BuildWindowCore attaches the window.
+        ApplyEmbeddedExStyle();
+        if (_hideFromTaskbar)
+        {
+            NativeMethods.ShowWindow(_hostedWindowHandle, 0); // SW_HIDE = 0
+        }
+    }
+
+    private int GetEmbeddedExStyle()
+    {
         int newExStyle = _originalExStyle;
-        newExStyle &= ~(int) NativeMethods.WS_EX_APPWINDOW;
-        newExStyle |= (int) NativeMethods.WS_EX_TOOLWINDOW;
-        NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, newExStyle);
-        NativeMethods.ShowWindow(_hostedWindowHandle, 0); // SW_HIDE = 0
+
+        if (_hideFromTaskbar)
+        {
+            newExStyle &= ~(int)NativeMethods.WS_EX_APPWINDOW;
+            newExStyle |= (int)NativeMethods.WS_EX_TOOLWINDOW;
+            return newExStyle;
+        }
+
+        // Keep a visible taskbar button while embedded.
+        newExStyle &= ~(int)NativeMethods.WS_EX_TOOLWINDOW;
+        newExStyle |= (int)NativeMethods.WS_EX_APPWINDOW;
+
+        return newExStyle;
+    }
+
+    private void ApplyEmbeddedExStyle()
+    {
+        if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed)
+            return;
+
+        NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE, GetEmbeddedExStyle());
+
+        // Ask Windows shell to re-evaluate non-client/taskbar presentation.
+        NativeMethods.SetWindowPos(
+            _hostedWindowHandle,
+            IntPtr.Zero,
+            0, 0, 0, 0,
+            NativeMethods.SWP_NOMOVE |
+            NativeMethods.SWP_NOSIZE |
+            NativeMethods.SWP_NOZORDER |
+            NativeMethods.SWP_NOACTIVATE |
+            NativeMethods.SWP_FRAMECHANGED);
+    }
+
+    private void UpdateTaskbarButtonRegistration()
+    {
+        if (_hideFromTaskbar)
+            UnregisterTaskbarButton();
+        else
+            RegisterTaskbarButton();
+    }
+
+    private void RegisterTaskbarButton()
+    {
+        if (_taskbarButtonRegistered || _hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed)
+            return;
+
+        TaskbarListInterop.Instance.AddTab(_hostedWindowHandle);
+        _taskbarButtonRegistered = true;
+    }
+
+    private void UnregisterTaskbarButton()
+    {
+        if (!_taskbarButtonRegistered)
+            return;
+
+        TaskbarListInterop.Instance.DeleteTab(_hostedWindowHandle);
+        _taskbarButtonRegistered = false;
+    }
+
+    public void SetHideFromTaskbar(bool hideFromTaskbar)
+    {
+        if (_hideFromTaskbar == hideFromTaskbar)
+            return;
+
+        _hideFromTaskbar = hideFromTaskbar;
+        ApplyEmbeddedExStyle();
+
+        if (_hostedWindowHandle != IntPtr.Zero && !_isHostedWindowClosed)
+        {
+            NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_SHOW);
+        }
+
+        UpdateTaskbarButtonRegistration();
     }
 
     public void ReleaseWindow()
     {
         if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
+
+        UnregisterTaskbarButton();
 
         // Remove from instance mapping
         if (_hwndHost != IntPtr.Zero)
