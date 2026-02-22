@@ -99,6 +99,81 @@
                 </Grid>
             </Border>
 
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="6" Padding="12,8" Margin="0,0,0,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="新規ウィンドウを自動で埋め込む" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="新しく表示されたウィンドウを自動的にタブとして取り込みます"
+                                   FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoEmbedNewWindows, Mode=TwoWay}"/>
+                </Grid>
+            </Border>
+
+            <!-- Auto-embed exclusion list (visible only when enabled) -->
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="6" Padding="12,10" Margin="0,0,0,4"
+                    Visibility="{Binding AutoEmbedNewWindows, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <!-- Header + Add button -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="自動埋め込みの除外リスト" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon FolderOpen24}"
+                                   Command="{Binding BrowseAndAddExclusionCommand}"
+                                   ToolTip="除外するアプリを追加..."/>
+                    </Grid>
+
+                    <!-- Exclusion items -->
+                    <ItemsControl ItemsSource="{Binding AutoEmbedExclusions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                        CornerRadius="4" Padding="8,6" Margin="0,0,0,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Image Source="{Binding Icon}" Width="20" Height="20"
+                                               Margin="0,0,8,0" VerticalAlignment="Center"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontSize="12"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            <TextBlock Text="{Binding Path}" FontSize="11"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Path}"/>
+                                        </StackPanel>
+                                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Dismiss24}"
+                                                   ToolTip="除外を解除"
+                                                   Command="{Binding DataContext.RemoveExclusionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Empty state -->
+                    <TextBlock Text="除外するアプリがありません"
+                               Visibility="{Binding HasNoExclusions, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,4"/>
+                </StackPanel>
+            </Border>
+
             <!-- Appearance Section -->
             <TextBlock Text="Appearance" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,6"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>

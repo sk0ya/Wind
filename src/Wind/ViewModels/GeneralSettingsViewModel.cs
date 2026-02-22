@@ -1,6 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Media;
+using Wind.Converters;
 using Wind.Services;
 
 namespace Wind.ViewModels;
@@ -31,6 +35,9 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private bool _hideEmbeddedFromTaskbar = true;
 
     [ObservableProperty]
+    private bool _autoEmbedNewWindows = false;
+
+    [ObservableProperty]
     private string _selectedAccentColor = "#0078D4";
 
     [ObservableProperty]
@@ -38,6 +45,9 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _selectedBackgroundColor = "";
+
+    public ObservableCollection<AutoEmbedExclusionItem> AutoEmbedExclusions { get; } = new();
+    public bool HasNoExclusions => AutoEmbedExclusions.Count == 0;
 
     public ObservableCollection<PresetColor> PresetColors { get; } = new()
     {
@@ -74,6 +84,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
     public GeneralSettingsViewModel(SettingsManager settingsManager)
     {
         _settingsManager = settingsManager;
+        _settingsManager.AutoEmbedExclusionsChanged += LoadExclusions;
         LoadSettings();
     }
 
@@ -88,6 +99,8 @@ public partial class GeneralSettingsViewModel : ObservableObject
         TabHeaderPosition = settings.TabHeaderPosition;
         EmbedCloseAction = settings.EmbedCloseAction;
         HideEmbeddedFromTaskbar = settings.HideEmbeddedFromTaskbar;
+        AutoEmbedNewWindows = settings.AutoEmbedNewWindows;
+        LoadExclusions();
         SelectedAccentColor = settings.AccentColor;
         UseSystemAccent = settings.UseSystemAccent;
         SelectedBackgroundColor = settings.BackgroundColor;
@@ -124,6 +137,39 @@ public partial class GeneralSettingsViewModel : ObservableObject
     partial void OnHideEmbeddedFromTaskbarChanged(bool value)
     {
         _settingsManager.SetHideEmbeddedFromTaskbar(value);
+    }
+
+    partial void OnAutoEmbedNewWindowsChanged(bool value)
+    {
+        _settingsManager.SetAutoEmbedNewWindows(value);
+    }
+
+    private void LoadExclusions()
+    {
+        AutoEmbedExclusions.Clear();
+        foreach (var path in _settingsManager.Settings.AutoEmbedExcludedExecutables)
+            AutoEmbedExclusions.Add(new AutoEmbedExclusionItem(path));
+        OnPropertyChanged(nameof(HasNoExclusions));
+    }
+
+    [RelayCommand]
+    private void RemoveExclusion(AutoEmbedExclusionItem item)
+    {
+        _settingsManager.RemoveAutoEmbedExclusion(item.Path);
+        // LoadExclusions() is called via AutoEmbedExclusionsChanged event
+    }
+
+    [RelayCommand]
+    private void BrowseAndAddExclusion()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "実行ファイル (*.exe)|*.exe",
+            Title = "除外するアプリを選択"
+        };
+        if (dialog.ShowDialog() == true)
+            _settingsManager.AddAutoEmbedExclusion(dialog.FileName);
+        // LoadExclusions() is called via AutoEmbedExclusionsChanged event
     }
 
     partial void OnSelectedAccentColorChanged(string value)
@@ -502,6 +548,20 @@ public partial class GeneralSettingsViewModel : ObservableObject
         {
             // Invalid color, ignore
         }
+    }
+}
+
+public class AutoEmbedExclusionItem
+{
+    public string Path { get; }
+    public string Name { get; }
+    public ImageSource? Icon { get; }
+
+    public AutoEmbedExclusionItem(string path)
+    {
+        Path = path;
+        Name = System.IO.Path.GetFileNameWithoutExtension(path);
+        Icon = PathToIconConverter.GetIconForPath(path);
     }
 }
 

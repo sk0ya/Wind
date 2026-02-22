@@ -78,6 +78,9 @@ public partial class TabManager
         };
         _cleanupTimer.Tick += (_, _) => CleanupInvalidTabs();
         _cleanupTimer.Start();
+
+        _settingsManager.AutoEmbedNewWindowsChanged += _ => UpdateGlobalWindowHook();
+        UpdateGlobalWindowHook();
     }
 
     public TabItem? AddTab(WindowInfo windowInfo, bool activate = true)
@@ -233,6 +236,8 @@ public partial class TabManager
 
         var windowInfo = WindowInfo.FromHandle(hwnd);
         if (windowInfo == null) return;
+
+        if (_settingsManager.IsAutoEmbedExcluded(windowInfo.ExecutablePath)) return;
 
         AddTab(windowInfo, activate: true);
     }

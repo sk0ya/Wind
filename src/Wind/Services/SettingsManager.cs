@@ -19,6 +19,8 @@ public class SettingsManager
 
     public event Action<string>? TabHeaderPositionChanged;
     public event Action<bool>? HideEmbeddedFromTaskbarChanged;
+    public event Action<bool>? AutoEmbedNewWindowsChanged;
+    public event Action? AutoEmbedExclusionsChanged;
 
     public SettingsManager()
     {
@@ -256,6 +258,44 @@ public class SettingsManager
         _settings.HideEmbeddedFromTaskbar = hideFromTaskbar;
         SaveSettings();
         HideEmbeddedFromTaskbarChanged?.Invoke(hideFromTaskbar);
+    }
+
+    public void SetAutoEmbedNewWindows(bool enable)
+    {
+        if (_settings.AutoEmbedNewWindows == enable)
+            return;
+
+        _settings.AutoEmbedNewWindows = enable;
+        SaveSettings();
+        AutoEmbedNewWindowsChanged?.Invoke(enable);
+    }
+
+    public bool IsAutoEmbedExcluded(string? executablePath)
+    {
+        if (string.IsNullOrEmpty(executablePath)) return false;
+        return _settings.AutoEmbedExcludedExecutables.Any(e =>
+            e.Equals(executablePath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void AddAutoEmbedExclusion(string executablePath)
+    {
+        if (string.IsNullOrEmpty(executablePath)) return;
+        if (IsAutoEmbedExcluded(executablePath)) return;
+        _settings.AutoEmbedExcludedExecutables.Add(executablePath);
+        SaveSettings();
+        AutoEmbedExclusionsChanged?.Invoke();
+    }
+
+    public void RemoveAutoEmbedExclusion(string executablePath)
+    {
+        var item = _settings.AutoEmbedExcludedExecutables
+            .FirstOrDefault(e => e.Equals(executablePath, StringComparison.OrdinalIgnoreCase));
+        if (item != null)
+        {
+            _settings.AutoEmbedExcludedExecutables.Remove(item);
+            SaveSettings();
+            AutoEmbedExclusionsChanged?.Invoke();
+        }
     }
 
     public static bool IsUrl(string path)

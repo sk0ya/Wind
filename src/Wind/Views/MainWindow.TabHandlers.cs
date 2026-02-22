@@ -161,6 +161,20 @@ public partial class MainWindow
             {
                 item.Visibility = isWindowTab ? Visibility.Visible : Visibility.Collapsed;
             }
+            else if (header.StartsWith("自動埋め込み"))
+            {
+                bool autoEmbedEnabled = _settingsManager.Settings.AutoEmbedNewWindows;
+                if (isWindowTab && !string.IsNullOrEmpty(exePath) && autoEmbedEnabled)
+                {
+                    item.Visibility = Visibility.Visible;
+                    bool isExcluded = _settingsManager.IsAutoEmbedExcluded(exePath);
+                    item.Header = isExcluded ? "自動埋め込みの除外を解除" : "自動埋め込みから除外";
+                }
+                else
+                {
+                    item.Visibility = Visibility.Collapsed;
+                }
+            }
         }
     }
 
@@ -223,6 +237,24 @@ public partial class MainWindow
         if (sender is FrameworkElement el && el.Tag is Models.TabItem tab && !string.IsNullOrEmpty(tab.Window?.ExecutablePath))
         {
             System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{tab.Window.ExecutablePath}\"");
+        }
+    }
+
+    private void ToggleAutoEmbedExclusion_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement el || el.Tag is not Models.TabItem tab) return;
+        var exePath = tab.Window?.ExecutablePath;
+        if (string.IsNullOrEmpty(exePath)) return;
+
+        if (_settingsManager.IsAutoEmbedExcluded(exePath))
+        {
+            _settingsManager.RemoveAutoEmbedExclusion(exePath);
+            _viewModel.StatusMessage = $"自動埋め込みの除外を解除: {tab.DisplayTitle}";
+        }
+        else
+        {
+            _settingsManager.AddAutoEmbedExclusion(exePath);
+            _viewModel.StatusMessage = $"自動埋め込みから除外: {tab.DisplayTitle}";
         }
     }
 

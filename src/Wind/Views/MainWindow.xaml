@@ -247,6 +247,7 @@
                         <Separator/>
                         <MenuItem Header="タブ名を変更" Click="RenameTab_Click" Tag="{Binding}"/>
                         <Separator/>
+                        <MenuItem Header="自動埋め込みから除外" Click="ToggleAutoEmbedExclusion_Click" Tag="{Binding}"/>
                         <MenuItem Header="埋め込み解除" Click="ReleaseEmbed_Click" Tag="{Binding}"/>
                         <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
                     </ContextMenu>
@@ -321,6 +322,7 @@
                         <Separator/>
                         <MenuItem Header="タブ名を変更" Click="RenameTab_Click" Tag="{Binding}"/>
                         <Separator/>
+                        <MenuItem Header="自動埋め込みから除外" Click="ToggleAutoEmbedExclusion_Click" Tag="{Binding}"/>
                         <MenuItem Header="埋め込み解除" Click="ReleaseEmbed_Click" Tag="{Binding}"/>
                         <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
                     </ContextMenu>
@@ -402,6 +404,7 @@
                         <Separator/>
                         <MenuItem Header="タブ名を変更" Click="RenameTab_Click" Tag="{Binding}"/>
                         <Separator/>
+                        <MenuItem Header="自動埋め込みから除外" Click="ToggleAutoEmbedExclusion_Click" Tag="{Binding}"/>
                         <MenuItem Header="埋め込み解除" Click="ReleaseEmbed_Click" Tag="{Binding}"/>
                         <MenuItem Header="閉じる" Click="CloseTab_Click" Tag="{Binding}"/>
                     </ContextMenu>

@@ -25,6 +25,15 @@ public class AppSettings
     /// False = keep embedded apps visible in taskbar.
     /// </summary>
     public bool HideEmbeddedFromTaskbar { get; set; } = true;
+    /// <summary>
+    /// True = automatically embed any new top-level window that appears on the system,
+    /// False = do not auto-embed (default).
+    /// </summary>
+    public bool AutoEmbedNewWindows { get; set; } = false;
+    /// <summary>
+    /// Executable paths excluded from auto-embedding.
+    /// </summary>
+    public List<string> AutoEmbedExcludedExecutables { get; set; } = new();
     public string AccentColor { get; set; } = "#0078D4";
     public bool UseSystemAccent { get; set; } = false;
     public string BackgroundColor { get; set; } = "";  // Empty = use theme default
