@@ -167,6 +167,16 @@ public partial class WindowPickerViewModel : ObservableObject
     }
 
     private enum QuickLaunchType { Url, Folder, File, GuiApp, ConsoleApp, BatchScript }
+    private const int ExplorerQuickLaunchEmbedDelayMs = 1000;
+
+    private static bool IsExplorerLaunch(QuickLaunchApp app, QuickLaunchType type)
+    {
+        if (type == QuickLaunchType.Folder)
+            return true;
+
+        var fileName = Path.GetFileName(app.Path);
+        return fileName.Equals("explorer.exe", StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Resolve a bare command name (e.g. "code", "cmd") against PATH
@@ -405,6 +415,7 @@ public partial class WindowPickerViewModel : ObservableObject
             IsLaunching = true;
 
             var type = DetectLaunchType(app.Path);
+            bool expectsExplorerWindow = IsExplorerLaunch(app, type);
 
             // URLs open as web tabs, not external processes
             if (type == QuickLaunchType.Url)
@@ -433,23 +444,48 @@ public partial class WindowPickerViewModel : ObservableObject
 
             // Poll for a new window that didn't exist before
             WindowInfo? newWindow = null;
+            WindowInfo? firstDetectedWindow = null;
             for (int i = 0; i < 100; i++)
             {
                 await Task.Delay(100, ct);
                 var current = _windowManager.EnumerateWindows();
-                newWindow = current.FirstOrDefault(w => !existingHandles.Contains(w.Handle));
+                if (expectsExplorerWindow)
+                {
+                    var candidates = current
+                        .Where(w => !existingHandles.Contains(w.Handle))
+                        .ToList();
+
+                    firstDetectedWindow ??= candidates.FirstOrDefault();
+                    newWindow = candidates.FirstOrDefault(w => w.IsExplorer);
+                }
+                else
+                {
+                    newWindow = current.FirstOrDefault(w =>
+                        !existingHandles.Contains(w.Handle));
+                }
+
                 if (newWindow != null)
                     break;
             }
 
             IsLaunching = false;
 
+            if (newWindow == null && expectsExplorerWindow)
+                newWindow = firstDetectedWindow;
+
             if (newWindow == null) return;
 
             if (app.ShouldEmbed)
             {
+                if (expectsExplorerWindow)
+                {
+                    // Explorer can surface before initial composition has stabilized.
+                    await Task.Delay(ExplorerQuickLaunchEmbedDelayMs, ct);
+                }
+
                 RefreshWindowList();
-                var windowInfo = _availableWindows.FirstOrDefault(w => w.Handle == newWindow.Handle);
+                var windowInfo = _availableWindows.FirstOrDefault(w => w.Handle == newWindow.Handle)
+                    ?? WindowInfo.FromHandle(newWindow.Handle);
                 if (windowInfo != null)
                 {
                     WindowSelected?.Invoke(this, windowInfo);
