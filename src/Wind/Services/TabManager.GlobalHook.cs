@@ -22,6 +22,7 @@ public partial class TabManager
     private const uint WINEVENT_OUTOFCONTEXT_G = 0x0000;
     private const int OBJID_WINDOW_G = 0;
     private const long AutoEmbedSuppressionDurationMs = 1500;
+    private const int ExplorerAutoEmbedDelayMs = 1000;
 
     private static readonly HashSet<string> _globalSystemWindowClasses = new(StringComparer.Ordinal)
     {
@@ -43,6 +44,7 @@ public partial class TabManager
     private IntPtr _globalWindowHook = IntPtr.Zero;
     private GlobalWinEventDelegate? _globalWinEventProc;
     private readonly Dictionary<IntPtr, long> _autoEmbedSuppressedUntil = new();
+    private readonly Dictionary<IntPtr, long> _explorerAutoEmbedDelayUntil = new();
 
     private void SetupGlobalWindowHook()
     {
@@ -61,6 +63,7 @@ public partial class TabManager
         UnhookWinEvent(_globalWindowHook);
         _globalWindowHook = IntPtr.Zero;
         _globalWinEventProc = null;
+        _explorerAutoEmbedDelayUntil.Clear();
     }
 
     private void OnGlobalWindowShow(
@@ -74,24 +77,95 @@ public partial class TabManager
 
     private void TryAutoEmbedWindow(IntPtr hwnd)
     {
-        if (!_settingsManager.Settings.AutoEmbedNewWindows) return;
-        if (IsAutoEmbedSuppressed(hwnd)) return;
-        if (_windowManager.IsEmbedded(hwnd)) return;
-        if (Tabs.Any(t => t.Window?.Handle == hwnd)) return;
-        if (!IsGloballyEmbeddableWindow(hwnd)) return;
+        if (!_settingsManager.Settings.AutoEmbedNewWindows)
+        {
+            ClearExplorerAutoEmbedDelay(hwnd);
+            return;
+        }
+
+        if (IsAutoEmbedSuppressed(hwnd))
+        {
+            ClearExplorerAutoEmbedDelay(hwnd);
+            return;
+        }
+
+        if (_windowManager.IsEmbedded(hwnd))
+        {
+            ClearExplorerAutoEmbedDelay(hwnd);
+            return;
+        }
+
+        if (Tabs.Any(t => t.Window?.Handle == hwnd))
+        {
+            ClearExplorerAutoEmbedDelay(hwnd);
+            return;
+        }
+
+        if (!IsGloballyEmbeddableWindow(hwnd))
+        {
+            ClearExplorerAutoEmbedDelay(hwnd);
+            return;
+        }
 
         var windowInfo = WindowInfo.FromHandle(hwnd);
-        if (windowInfo == null) return;
+        if (windowInfo == null)
+        {
+            ClearExplorerAutoEmbedDelay(hwnd);
+            return;
+        }
+
+        if (ShouldDelayExplorerAutoEmbed(windowInfo, hwnd))
+        {
+            return;
+        }
+
+        ClearExplorerAutoEmbedDelay(hwnd);
 
         if (_settingsManager.IsAutoEmbedExcluded(windowInfo.ExecutablePath)) return;
 
         AddTab(windowInfo, activate: true);
     }
 
+    private bool ShouldDelayExplorerAutoEmbed(WindowInfo windowInfo, IntPtr hwnd)
+    {
+        if (!string.Equals(windowInfo.ProcessName, "explorer", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        long now = Environment.TickCount64;
+        if (_explorerAutoEmbedDelayUntil.TryGetValue(hwnd, out long delayUntil))
+        {
+            if (now >= delayUntil)
+            {
+                _explorerAutoEmbedDelayUntil.Remove(hwnd);
+                return false;
+            }
+
+            return true;
+        }
+
+        _explorerAutoEmbedDelayUntil[hwnd] = now + ExplorerAutoEmbedDelayMs;
+        QueueExplorerAutoEmbedAfterDelay(hwnd);
+        return true;
+    }
+
+    private async void QueueExplorerAutoEmbedAfterDelay(IntPtr hwnd)
+    {
+        await Task.Delay(ExplorerAutoEmbedDelayMs);
+
+        TryAutoEmbedWindow(hwnd);
+    }
+
+    private void ClearExplorerAutoEmbedDelay(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+        _explorerAutoEmbedDelayUntil.Remove(hwnd);
+    }
+
     private void SuppressAutoEmbedForWindow(IntPtr hwnd)
     {
         if (hwnd == IntPtr.Zero) return;
 
+        ClearExplorerAutoEmbedDelay(hwnd);
         _autoEmbedSuppressedUntil[hwnd] = Environment.TickCount64 + AutoEmbedSuppressionDurationMs;
 
         if (_autoEmbedSuppressedUntil.Count > 256)
