@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Wind.Interop;
+using Wind.Models;
 using Wind.Services;
 using Wind.ViewModels;
 using Wind.Views.Settings;
@@ -31,7 +32,11 @@ public partial class MainWindow : Window
     private readonly BackdropWindow _backdropWindow = new();
     private readonly Dictionary<Guid, WebTabControl> _webTabControls = new();
     private Guid? _currentWebTabId;
-    private readonly HashSet<int> _monitoredProcessIds = new();
+    private const int CloseWaitTimeoutMs = 10000;
+    private bool _isWaitingForCloseTargets;
+    private bool _skipCloseWaitOnce;
+    private bool _isCleanupCompleted;
+    private CancellationTokenSource? _closeWaitCts;
 
     public MainWindow()
     {
@@ -176,41 +181,90 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        var setting = _settingsManager.Settings.CloseWindowsOnExit;
-        if (setting == "All" || setting == "StartupOnly")
-        {
-            bool startupOnly = setting == "StartupOnly";
-            var runningApps = _tabManager.GetManagedAppsWithHandles(startupOnly)
-                .Where(a => IsProcessRunning(a.ProcessId))
-                .ToList();
+        if (_isCleanupCompleted)
+            return;
 
-            if (runningApps.Count > 0)
+        if (_skipCloseWaitOnce)
+        {
+            _skipCloseWaitOnce = false;
+            PerformShutdownCleanup();
+            return;
+        }
+
+        if (_isWaitingForCloseTargets)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        if (TryStartCloseTargetWait(e))
+            return;
+
+        PerformShutdownCleanup();
+    }
+
+    private bool TryStartCloseTargetWait(System.ComponentModel.CancelEventArgs e)
+    {
+        var setting = _settingsManager.Settings.CloseWindowsOnExit;
+        if (setting != "All" && setting != "StartupOnly")
+            return false;
+
+        bool startupOnly = setting == "StartupOnly";
+        var tabsSnapshot = _tabManager.Tabs.ToList();
+        var pidsToWait = new HashSet<int>();
+        var tabIdsToWait = new HashSet<Guid>();
+
+        foreach (var tab in tabsSnapshot)
+        {
+            bool isEmbeddedTab = !tab.IsContentTab && !tab.IsWebTab;
+            bool shouldWaitByPid = isEmbeddedTab && (!startupOnly || tab.IsLaunchedAtStartup);
+
+            if (shouldWaitByPid)
             {
-                // 実行中のアプリがあれば Close をキャンセルし WM_CLOSE を送る
-                e.Cancel = true;
-                foreach (var (hwnd, pid) in runningApps)
+                var host = _tabManager.GetWindowHost(tab);
+                if (host == null)
+                {
+                    tabIdsToWait.Add(tab.Id);
+                    TryRemoveTab(tab);
+                    continue;
+                }
+
+                if (tab.Window?.Handle is IntPtr hwnd && hwnd != IntPtr.Zero)
                 {
                     NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                    if (_monitoredProcessIds.Add(pid))
-                        MonitorProcessExit(pid);
                 }
-                return;
+
+                if (host.HostedProcessId != 0 && IsProcessRunning(host.HostedProcessId))
+                {
+                    pidsToWait.Add(host.HostedProcessId);
+                }
+                else
+                {
+                    tabIdsToWait.Add(tab.Id);
+                }
+
+                continue;
             }
+
+            // Non-embedded tabs and non-target embedded tabs are tracked by tab closure.
+            tabIdsToWait.Add(tab.Id);
+            TryRemoveTab(tab);
         }
 
-        _settingsManager.TabHeaderPositionChanged -= OnTabHeaderPositionChanged;
+        tabIdsToWait.RemoveWhere(tabId => !_tabManager.Tabs.Any(t => t.Id == tabId));
+        pidsToWait.RemoveWhere(pid => !IsProcessRunning(pid));
 
-        // Dispose all web tab controls
-        foreach (var control in _webTabControls.Values)
-        {
-            control.Dispose();
-        }
-        _webTabControls.Clear();
+        if (pidsToWait.Count == 0 && tabIdsToWait.Count == 0)
+            return false;
 
-        _backdropWindow.Destroy();
-        _resizeHelper?.Dispose();
-        _resizeHelper = null;
-        _viewModel.Cleanup();
+        e.Cancel = true;
+        _isWaitingForCloseTargets = true;
+
+        _closeWaitCts?.Cancel();
+        _closeWaitCts?.Dispose();
+        _closeWaitCts = new CancellationTokenSource();
+        _ = WaitForCloseTargetsAsync(pidsToWait, tabIdsToWait, _closeWaitCts.Token);
+        return true;
     }
 
     private static bool IsProcessRunning(int pid)
@@ -223,25 +277,101 @@ public partial class MainWindow : Window
         catch { return false; }
     }
 
-    private void MonitorProcessExit(int pid)
+    private async Task WaitForCloseTargetsAsync(
+        HashSet<int> pidsToWait,
+        HashSet<Guid> tabIdsToWait,
+        CancellationToken cancellationToken)
     {
-        Task.Run(() =>
+        var sw = Stopwatch.StartNew();
+
+        try
+        {
+            while (sw.ElapsedMilliseconds < CloseWaitTimeoutMs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                pidsToWait.RemoveWhere(pid => !IsProcessRunning(pid));
+                tabIdsToWait.RemoveWhere(tabId => !_tabManager.Tabs.Any(t => t.Id == tabId));
+
+                if (pidsToWait.Count == 0 && tabIdsToWait.Count == 0)
+                    break;
+
+                await Task.Delay(100, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cancellationToken.IsCancellationRequested)
+            return;
+
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            if (_isCleanupCompleted)
+                return;
+
+            _isWaitingForCloseTargets = false;
+            _skipCloseWaitOnce = true;
+            Close();
+        });
+    }
+
+    private void TryRemoveTab(TabItem tab)
+    {
+        if (!_tabManager.Tabs.Contains(tab))
+            return;
+
+        try
+        {
+            _tabManager.RemoveTab(tab);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to close tab {tab.Title}: {ex.Message}");
+        }
+    }
+
+    private void PerformShutdownCleanup()
+    {
+        if (_isCleanupCompleted)
+            return;
+
+        _isCleanupCompleted = true;
+        _isWaitingForCloseTargets = false;
+
+        _closeWaitCts?.Cancel();
+        _closeWaitCts?.Dispose();
+        _closeWaitCts = null;
+
+        _settingsManager.TabHeaderPositionChanged -= OnTabHeaderPositionChanged;
+
+        // Dispose all web tab controls
+        foreach (var control in _webTabControls.Values.ToList())
         {
             try
             {
-                using var proc = Process.GetProcessById(pid);
-                proc.WaitForExit();
+                control.Dispose();
             }
-            catch { }
-
-            Dispatcher.BeginInvoke(() =>
+            catch (Exception ex)
             {
-                _monitoredProcessIds.Remove(pid);
-                // 監視中のアプリが全て終了したら Wind を閉じる
-                if (_monitoredProcessIds.Count == 0)
-                    Close();
-            });
-        });
+                Debug.WriteLine($"Failed to dispose web tab control: {ex.Message}");
+            }
+        }
+        _webTabControls.Clear();
+
+        _backdropWindow.Destroy();
+        _resizeHelper?.Dispose();
+        _resizeHelper = null;
+        try
+        {
+            _viewModel.Cleanup();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Cleanup failed during shutdown: {ex.Message}");
+        }
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
