@@ -150,7 +150,29 @@ public partial class WindowHost : HwndHost
     public void ForceRedraw()
     {
         if (_hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed) return;
+
         NativeMethods.ShowWindow(_hostedWindowHandle, NativeMethods.SW_SHOW);
-        InvalidateRect(_hostedWindowHandle, IntPtr.Zero, true);
+        NativeMethods.RedrawWindow(
+            _hostedWindowHandle,
+            IntPtr.Zero,
+            IntPtr.Zero,
+            NativeMethods.RDW_INVALIDATE |
+            NativeMethods.RDW_ERASE |
+            NativeMethods.RDW_FRAME |
+            NativeMethods.RDW_ALLCHILDREN |
+            NativeMethods.RDW_UPDATENOW);
+        NativeMethods.UpdateWindow(_hostedWindowHandle);
+
+        if (_hwndHost != IntPtr.Zero)
+        {
+            NativeMethods.RedrawWindow(
+                _hwndHost,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                NativeMethods.RDW_INVALIDATE |
+                NativeMethods.RDW_ERASE |
+                NativeMethods.RDW_UPDATENOW);
+            NativeMethods.UpdateWindow(_hwndHost);
+        }
     }
 }

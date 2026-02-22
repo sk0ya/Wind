@@ -53,20 +53,40 @@ public partial class MainWindow
 
         UpdateBackdropVisibility();
 
-        // WS_POPUP + SetParent の埋め込みウィンドウは、親 HWND が再表示されても
-        // 自動的に WM_PAINT が届かないため、明示的に ShowWindow + InvalidateRect で強制再描画する。
-        Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+        RequestEmbeddedContentRedraw();
+    }
+
+    private void RequestEmbeddedContentRedraw()
+    {
+        // WS_POPUP + SetParent の埋め込みウィンドウは、親 HWND の再表示直後に
+        // 再描画が間に合わないことがあるため、Render と ApplicationIdle の2回で補償する。
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, ForceEmbeddedContentRedraw);
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, ForceEmbeddedContentRedraw);
+    }
+
+    private void ForceEmbeddedContentRedraw()
+    {
+        if (_viewModel.IsCommandPaletteOpen || _viewModel.IsWindowPickerOpen)
+            return;
+
+        if (_viewModel.IsTileVisible)
         {
-            if (_viewModel.IsTileVisible)
+            foreach (var host in _tiledHosts)
+                host.ForceRedraw();
+            return;
+        }
+
+        if (_viewModel.IsWebTabActive && _currentWebTabId.HasValue)
+        {
+            if (_webTabControls.TryGetValue(_currentWebTabId.Value, out var webControl))
             {
-                foreach (var host in _tiledHosts)
-                    host.ForceRedraw();
+                webControl.InvalidateVisual();
+                webControl.UpdateLayout();
             }
-            else
-            {
-                _currentHost?.ForceRedraw();
-            }
-        });
+            return;
+        }
+
+        _currentHost?.ForceRedraw();
     }
 
     private void OnCommandPaletteItemExecuted(object? sender, CommandPaletteItem item)

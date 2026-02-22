@@ -80,7 +80,6 @@ public partial class MainWindow : Window
         paletteVm.Cancelled += (s, e) =>
         {
             _viewModel.CloseCommandPaletteCommand.Execute(null);
-            RestoreEmbeddedWindow();
         };
 
         // Wire up hosted window control events
