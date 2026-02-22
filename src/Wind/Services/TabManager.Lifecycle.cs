@@ -52,6 +52,7 @@ public partial class TabManager
                 }
                 else
                 {
+                    SuppressAutoEmbedForWindow(host.HostedWindowHandle);
                     _windowManager.ReleaseWindow(host);
                 }
                 _windowHosts.Remove(tab.Id);
@@ -123,6 +124,7 @@ public partial class TabManager
 
             if (_windowHosts.TryGetValue(tab.Id, out var host))
             {
+                SuppressAutoEmbedForWindow(host.HostedWindowHandle);
                 _windowManager.ReleaseWindow(host);
                 _windowHosts.Remove(tab.Id);
             }

@@ -21,6 +21,7 @@ public partial class TabManager
     private const uint EVENT_OBJECT_SHOW_G = 0x8002;
     private const uint WINEVENT_OUTOFCONTEXT_G = 0x0000;
     private const int OBJID_WINDOW_G = 0;
+    private const long AutoEmbedSuppressionDurationMs = 1500;
 
     private static readonly HashSet<string> _globalSystemWindowClasses = new(StringComparer.Ordinal)
     {
@@ -41,6 +42,7 @@ public partial class TabManager
 
     private IntPtr _globalWindowHook = IntPtr.Zero;
     private GlobalWinEventDelegate? _globalWinEventProc;
+    private readonly Dictionary<IntPtr, long> _autoEmbedSuppressedUntil = new();
 
     private void SetupGlobalWindowHook()
     {
@@ -73,6 +75,7 @@ public partial class TabManager
     private void TryAutoEmbedWindow(IntPtr hwnd)
     {
         if (!_settingsManager.Settings.AutoEmbedNewWindows) return;
+        if (IsAutoEmbedSuppressed(hwnd)) return;
         if (_windowManager.IsEmbedded(hwnd)) return;
         if (Tabs.Any(t => t.Window?.Handle == hwnd)) return;
         if (!IsGloballyEmbeddableWindow(hwnd)) return;
@@ -85,6 +88,45 @@ public partial class TabManager
         AddTab(windowInfo, activate: true);
     }
 
+    private void SuppressAutoEmbedForWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        _autoEmbedSuppressedUntil[hwnd] = Environment.TickCount64 + AutoEmbedSuppressionDurationMs;
+
+        if (_autoEmbedSuppressedUntil.Count > 256)
+        {
+            CleanupExpiredAutoEmbedSuppressions();
+        }
+    }
+
+    private bool IsAutoEmbedSuppressed(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return false;
+        if (!_autoEmbedSuppressedUntil.TryGetValue(hwnd, out long suppressUntil)) return false;
+
+        if (Environment.TickCount64 <= suppressUntil) return true;
+
+        _autoEmbedSuppressedUntil.Remove(hwnd);
+        return false;
+    }
+
+    private void CleanupExpiredAutoEmbedSuppressions()
+    {
+        if (_autoEmbedSuppressedUntil.Count == 0) return;
+
+        long now = Environment.TickCount64;
+        var expiredHandles = _autoEmbedSuppressedUntil
+            .Where(pair => pair.Value < now)
+            .Select(pair => pair.Key)
+            .ToList();
+
+        foreach (var handle in expiredHandles)
+        {
+            _autoEmbedSuppressedUntil.Remove(handle);
+        }
+    }
+
     private bool IsGloballyEmbeddableWindow(IntPtr hwnd)
     {
         if (!NativeMethods.IsWindowVisible(hwnd)) return false;
@@ -94,6 +136,7 @@ public partial class TabManager
 
         if ((style & (int)NativeMethods.WS_CHILD) != 0) return false;
         if ((exStyle & (int)NativeMethods.WS_EX_TOOLWINDOW) != 0) return false;
+        if ((exStyle & (int)NativeMethods.WS_EX_TOPMOST) != 0) return false;
 
         string title = NativeMethods.GetWindowTitle(hwnd);
         if (string.IsNullOrWhiteSpace(title)) return false;

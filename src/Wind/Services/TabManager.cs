@@ -296,6 +296,7 @@ public partial class TabManager
         else if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
         {
             _processTracker.Remove(host.HostedProcessId);
+            SuppressAutoEmbedForWindow(host.HostedWindowHandle);
             _windowManager.ReleaseWindow(host);
             _windowHosts.Remove(tab.Id);
         }
@@ -354,6 +355,7 @@ public partial class TabManager
                 if (!tab.IsContentTab && _windowHosts.TryGetValue(tab.Id, out var host))
                 {
                     _processTracker.Remove(host.HostedProcessId);
+                    SuppressAutoEmbedForWindow(host.HostedWindowHandle);
                     _windowManager.ReleaseWindow(host);
                     _windowHosts.Remove(tab.Id);
                 }
