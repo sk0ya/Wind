@@ -16,10 +16,19 @@ public partial class MainWindow
         // Re-establish backdrop Z-order directly behind Wind
         UpdateBackdropPosition();
 
+        // If command palette is open, keep focus in its search box.
+        if (_viewModel.IsCommandPaletteOpen)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+            {
+                CommandPaletteControl.RequestSearchBoxFocus();
+            });
+            return;
+        }
+
         // When Wind window is activated, forward focus to the embedded window
         // only if the mouse is over the content area (not the tab bar).
-        // Skip when an overlay (command palette / window picker) is open.
-        if (_viewModel.IsCommandPaletteOpen || _viewModel.IsWindowPickerOpen) return;
+        if (_viewModel.IsWindowPickerOpen) return;
 
         Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {

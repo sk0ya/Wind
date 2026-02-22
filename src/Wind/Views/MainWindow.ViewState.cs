@@ -207,6 +207,11 @@ public partial class MainWindow
 
                 var palVm = (CommandPaletteViewModel)CommandPaletteControl.DataContext;
                 palVm.Open();
+
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+                {
+                    CommandPaletteControl.RequestSearchBoxFocus();
+                });
             }
             else
             {

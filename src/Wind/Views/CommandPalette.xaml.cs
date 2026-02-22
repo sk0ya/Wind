@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using Wind.ViewModels;
 
@@ -9,6 +10,8 @@ namespace Wind.Views;
 
 public partial class CommandPalette : UserControl
 {
+    private int _focusRequestId;
+
     public CommandPalette()
     {
         InitializeComponent();
@@ -19,14 +22,97 @@ public partial class CommandPalette : UserControl
     {
         if (e.NewValue is true)
         {
-            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
-            {
-                SearchBox.ApplyTemplate();
-                UpdateLayout();
-                var inner = FindVisualChild<System.Windows.Controls.TextBox>(SearchBox);
-                Keyboard.Focus(inner ?? (IInputElement)SearchBox);
-            });
+            RequestSearchBoxFocus();
         }
+        else
+        {
+            _focusRequestId++;
+        }
+    }
+
+    public void RequestSearchBoxFocus()
+    {
+        if (!IsVisible)
+            return;
+
+        int requestId = ++_focusRequestId;
+        _ = FocusSearchBoxWithRetryAsync(requestId);
+    }
+
+    private async Task FocusSearchBoxWithRetryAsync(int requestId)
+    {
+        var priorities = new[]
+        {
+            DispatcherPriority.Loaded,
+            DispatcherPriority.Input,
+            DispatcherPriority.Render,
+            DispatcherPriority.ContextIdle,
+            DispatcherPriority.ApplicationIdle
+        };
+
+        foreach (var priority in priorities)
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (requestId != _focusRequestId || !IsVisible)
+                    return;
+
+                TryFocusSearchBox();
+            }, priority);
+
+            if (requestId != _focusRequestId || !IsVisible)
+                return;
+
+            if (IsSearchBoxFocused())
+                return;
+        }
+    }
+
+    private void TryFocusSearchBox()
+    {
+        SearchBox.ApplyTemplate();
+        SearchBox.UpdateLayout();
+        UpdateLayout();
+
+        var inner = FindVisualChild<System.Windows.Controls.TextBox>(SearchBox);
+        var target = inner as IInputElement ?? SearchBox;
+        Keyboard.Focus(target);
+
+        if (inner != null)
+        {
+            inner.SelectAll();
+            inner.CaretIndex = inner.Text?.Length ?? 0;
+        }
+    }
+
+    private bool IsSearchBoxFocused()
+    {
+        if (Keyboard.FocusedElement is not DependencyObject focusedElement)
+            return false;
+
+        return IsDescendantOf(focusedElement, SearchBox);
+    }
+
+    private static bool IsDescendantOf(DependencyObject candidate, DependencyObject ancestor)
+    {
+        DependencyObject? current = candidate;
+        while (current != null)
+        {
+            if (ReferenceEquals(current, ancestor))
+                return true;
+
+            current = GetParent(current);
+        }
+
+        return false;
+    }
+
+    private static DependencyObject? GetParent(DependencyObject current)
+    {
+        if (current is Visual || current is Visual3D)
+            return VisualTreeHelper.GetParent(current);
+
+        return LogicalTreeHelper.GetParent(current);
     }
 
     private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
