@@ -31,8 +31,8 @@
         <Thickness x:Key="VerticalTabAccentThickness">2,0,0,0</Thickness>
 
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="46"/>
-            <Setter Property="Height" Value="36"/>
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="34"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -509,17 +509,23 @@
                                         <ui:SymbolIcon Symbol="Flash24" FontSize="14" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="閉じる" InputGestureText="Alt+F4" Click="CloseButton_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Dismiss24" FontSize="14" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
                     <Button x:Name="MinimizeButton" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click">
-                        <ui:SymbolIcon Symbol="Subtract24" FontSize="10"/>
+                        <ui:SymbolIcon Symbol="Subtract24" FontSize="12"/>
                     </Button>
                     <Button x:Name="MaximizeButton" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click">
-                        <ui:SymbolIcon x:Name="MaximizeIcon" Symbol="Maximize24" FontSize="10"/>
+                        <ui:SymbolIcon x:Name="MaximizeIcon" Symbol="Maximize24" FontSize="12"/>
                     </Button>
                     <Button x:Name="CloseButton" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click">
-                        <ui:SymbolIcon Symbol="Dismiss24" FontSize="10"/>
+                        <ui:SymbolIcon Symbol="Dismiss24" FontSize="12"/>
                     </Button>
                 </StackPanel>
             </Grid>

@@ -133,7 +133,7 @@ public partial class MainWindow
 
     private void SetButtonSizesForMode(bool isVertical)
     {
-        // The TitleBarButtonStyle sets Width=46, Height=36.
+        // The TitleBarButtonStyle sets Width=44, Height=34.
         // For vertical mode, we clear the local Width so buttons share the row evenly.
         // For horizontal mode, we clear local values to let the Style apply.
         Button[] buttons = [MenuButton, MinimizeButton, MaximizeButton, CloseButton];
@@ -143,7 +143,7 @@ public partial class MainWindow
             if (isVertical)
             {
                 btn.ClearValue(WidthProperty);
-                btn.Height = 36;
+                btn.Height = 34;
                 btn.HorizontalAlignment = HorizontalAlignment.Stretch;
             }
             else
@@ -319,7 +319,7 @@ public partial class MainWindow
                 if (child is Button btn)
                 {
                     btn.Width = 36;
-                    btn.Height = 28;
+                    btn.Height = 26;
                 }
             }
         }
