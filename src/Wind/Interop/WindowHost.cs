@@ -5,6 +5,9 @@ namespace Wind.Interop;
 
 public partial class WindowHost : HwndHost
 {
+    private const int ConsoleTopViewportCompensationPx = 18;
+    private const int ConsoleBottomViewportCompensationPx = 6;
+
     private IntPtr _hostedWindowHandle;
     private IntPtr _hwndHost;
     private int _originalStyle;
@@ -13,6 +16,9 @@ public partial class WindowHost : HwndHost
     private bool _isHostedWindowClosed;
     private bool _hideFromTaskbar;
     private bool _taskbarButtonRegistered;
+    private readonly bool _isConsoleWindowClass;
+    private readonly bool _embedAsChildWindow;
+    private readonly bool _stripLayeredExStyleForEmbeddedConsole;
 
     public IntPtr HostedWindowHandle => _hostedWindowHandle;
     public int HostedProcessId { get; }
@@ -67,6 +73,12 @@ public partial class WindowHost : HwndHost
         _originalExStyle = NativeMethods.GetWindowLong(_hostedWindowHandle, NativeMethods.GWL_EXSTYLE);
         NativeMethods.GetWindowRect(_hostedWindowHandle, out _originalRect);
 
+        string className = NativeMethods.GetWindowClassName(_hostedWindowHandle);
+        _isConsoleWindowClass = string.Equals(className, "ConsoleWindowClass", StringComparison.OrdinalIgnoreCase);
+        _embedAsChildWindow = _isConsoleWindowClass;
+        _stripLayeredExStyleForEmbeddedConsole = _isConsoleWindowClass &&
+                                                 (_originalExStyle & (int)NativeMethods.WS_EX_LAYERED) != 0;
+
         // Apply initial taskbar style.
         // We hide immediately only when taskbar hiding is enabled to avoid a brief
         // floating flash before BuildWindowCore attaches the window.
@@ -80,6 +92,13 @@ public partial class WindowHost : HwndHost
     private int GetEmbeddedExStyle()
     {
         int newExStyle = _originalExStyle;
+
+        if (_stripLayeredExStyleForEmbeddedConsole)
+        {
+            // ConsoleWindowClass (PowerShell/conhost) can render with a clipped top edge
+            // when kept layered after reparenting.
+            newExStyle &= ~(int)NativeMethods.WS_EX_LAYERED;
+        }
 
         if (_hideFromTaskbar)
         {
@@ -120,6 +139,36 @@ public partial class WindowHost : HwndHost
             UnregisterTaskbarButton();
         else
             RegisterTaskbarButton();
+    }
+
+    private bool TryGetClientInsets(out int insetLeft, out int insetTop, out int insetRight, out int insetBottom)
+    {
+        insetLeft = 0;
+        insetTop = 0;
+        insetRight = 0;
+        insetBottom = 0;
+
+        if (!_isConsoleWindowClass || _embedAsChildWindow || _hostedWindowHandle == IntPtr.Zero || _isHostedWindowClosed)
+            return false;
+
+        if (!NativeMethods.GetWindowRect(_hostedWindowHandle, out var windowRect))
+            return false;
+
+        if (!NativeMethods.GetClientRect(_hostedWindowHandle, out var clientRect))
+            return false;
+
+        var clientOrigin = new NativeMethods.POINT { X = 0, Y = 0 };
+        if (!NativeMethods.ClientToScreen(_hostedWindowHandle, ref clientOrigin))
+            return false;
+
+        int clientWidth = Math.Max(0, clientRect.Width);
+        int clientHeight = Math.Max(0, clientRect.Height);
+
+        insetLeft = Math.Max(0, clientOrigin.X - windowRect.Left);
+        insetTop = Math.Max(0, clientOrigin.Y - windowRect.Top);
+        insetRight = Math.Max(0, windowRect.Width - insetLeft - clientWidth);
+        insetBottom = Math.Max(0, windowRect.Height - insetTop - clientHeight);
+        return true;
     }
 
     private void RegisterTaskbarButton()
@@ -197,17 +246,67 @@ public partial class WindowHost : HwndHost
         // _hwndHost position is managed by HwndHost base class — do not move it.
         if (!_isHostedMoving)
         {
+            if (_embedAsChildWindow)
+            {
+                int childY = 0;
+                int childTargetHeight = Math.Max(1, height);
+
+                if (_isConsoleWindowClass)
+                {
+                    // ConsoleWindowClass can keep an internal upward viewport drift after reparenting.
+                    // Shift it down and over-scan height so the clipped first rows become visible.
+                    childY = ConsoleTopViewportCompensationPx;
+                    childTargetHeight = Math.Max(1, height + ConsoleTopViewportCompensationPx + ConsoleBottomViewportCompensationPx);
+                }
+
+                NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
+                    0, childY, Math.Max(1, width), childTargetHeight,
+                    NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOCOPYBITS);
+
+                // WS_CHILD windows are automatically clipped by parent; keep region cleared.
+                NativeMethods.SetWindowRgn(_hostedWindowHandle, IntPtr.Zero, true);
+                return;
+            }
+
+            int x = 0;
+            int y = 0;
+            int targetWidth = width;
+            int targetHeight = height;
+            int regionLeft = 0;
+            int regionTop = 0;
+            int regionRight = width;
+            int regionBottom = height;
+
+            if (TryGetClientInsets(out int insetLeft, out int insetTop, out int insetRight, out int insetBottom))
+            {
+                // ConsoleWindowClass can keep non-client insets even after style stripping.
+                // Offset and expand the hosted window so its client area exactly fills the host.
+                x = -insetLeft;
+                y = -insetTop;
+                targetWidth = width + insetLeft + insetRight;
+                targetHeight = height + insetTop + insetBottom;
+                regionLeft = insetLeft;
+                regionTop = insetTop;
+                regionRight = insetLeft + width;
+                regionBottom = insetTop + height;
+            }
+
+            targetWidth = Math.Max(1, targetWidth);
+            targetHeight = Math.Max(1, targetHeight);
+            regionRight = Math.Max(regionLeft + 1, regionRight);
+            regionBottom = Math.Max(regionTop + 1, regionBottom);
+
             // Use SetWindowPos with SWP_NOCOPYBITS to prevent Windows from copying
             // old pixel content during resize, which causes ghost artifacts.
             NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
-                0, 0, width, height,
+                x, y, targetWidth, targetHeight,
                 NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOCOPYBITS);
 
             // Clip the WS_POPUP window to the host's client area.
             // Unlike WS_CHILD, WS_POPUP windows are not automatically clipped by
             // their parent, so we enforce it with a window region.
             // SetWindowRgn takes ownership of the region handle — do not delete it.
-            IntPtr rgn = NativeMethods.CreateRectRgn(0, 0, width, height);
+            IntPtr rgn = NativeMethods.CreateRectRgn(regionLeft, regionTop, regionRight, regionBottom);
             NativeMethods.SetWindowRgn(_hostedWindowHandle, rgn, true);
         }
     }

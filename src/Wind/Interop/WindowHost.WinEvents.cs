@@ -86,12 +86,20 @@ public partial class WindowHost
                           NativeMethods.WS_MINIMIZEBOX | NativeMethods.WS_MAXIMIZEBOX |
                           NativeMethods.WS_SYSMENU | NativeMethods.WS_BORDER | NativeMethods.WS_DLGFRAME);
 
-        // Use WS_POPUP + SetParent for all windows.  Many apps (Chromium, Office,
-        // Electron, etc.) break when made WS_CHILD because their rendering and input
-        // pipelines assume a top-level window.  WS_POPUP + SetParent keeps the window
-        // clipped to the host while preserving normal keyboard/mouse input.
-        newStyle &= ~(int)NativeMethods.WS_CHILD;
-        newStyle |= unchecked((int)NativeMethods.WS_POPUP) | (int)NativeMethods.WS_VISIBLE;
+        if (_embedAsChildWindow)
+        {
+            // ConsoleWindowClass (PowerShell/conhost) behaves better as a true child.
+            newStyle &= unchecked((int)~NativeMethods.WS_POPUP);
+            newStyle |= (int)NativeMethods.WS_CHILD | (int)NativeMethods.WS_VISIBLE;
+        }
+        else
+        {
+            // Use WS_POPUP + SetParent for non-console windows. Many apps (Chromium,
+            // Office, Electron, etc.) break when made WS_CHILD because their rendering
+            // and input pipelines assume a top-level window.
+            newStyle &= ~(int)NativeMethods.WS_CHILD;
+            newStyle |= unchecked((int)NativeMethods.WS_POPUP) | (int)NativeMethods.WS_VISIBLE;
+        }
 
         NativeMethods.SetWindowLong(_hostedWindowHandle, NativeMethods.GWL_STYLE, newStyle);
 
@@ -377,12 +385,7 @@ public partial class WindowHost
                 {
                     NativeMethods.GetWindowRect(_hwndHost, out var hostRect);
                     int w = hostRect.Width, h = hostRect.Height;
-                    NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
-                        0, 0, w, h,
-                        NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOCOPYBITS);
-
-                    IntPtr rgn = NativeMethods.CreateRectRgn(0, 0, w, h);
-                    NativeMethods.SetWindowRgn(_hostedWindowHandle, rgn, true);
+                    ResizeHostedWindow(w, h);
                 }
             }
         }
@@ -423,9 +426,7 @@ public partial class WindowHost
                 if (dx != 0 || dy != 0)
                 {
                     MoveRequested?.Invoke(dx, dy);
-                    NativeMethods.SetWindowPos(_hostedWindowHandle, IntPtr.Zero,
-                        0, 0, hostRect.Width, hostRect.Height,
-                        NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOCOPYBITS);
+                    ResizeHostedWindow(hostRect.Width, hostRect.Height);
                 }
             }
         }
