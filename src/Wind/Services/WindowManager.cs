@@ -81,7 +81,7 @@ public class WindowManager
         // Skip certain system windows
         string className = NativeMethods.GetWindowClassName(hWnd);
         if (IsSystemWindow(className)) return false;
-        if (WindowClassFilters.TryGetUnsupportedReasonForEmbedding(hWnd, out _, deepInspection: false)) return false;
+        if (WindowClassFilters.TryGetUnsupportedReasonForEmbedding(hWnd, out _)) return false;
 
         return true;
     }
@@ -95,7 +95,7 @@ public class WindowManager
             "Shell_TrayWnd" => true,
             "Shell_SecondaryTrayWnd" => true,
             "Windows.UI.Core.CoreWindow" => true,
-            "ApplicationFrameWindow" => false, // UWP apps - we want these
+            "ApplicationFrameWindow" => true, // UWP host window
             _ => false
         };
     }

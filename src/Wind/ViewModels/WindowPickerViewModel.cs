@@ -489,6 +489,8 @@ public partial class WindowPickerViewModel : ObservableObject
                 if (windowInfo != null)
                 {
                     WindowSelected?.Invoke(this, windowInfo);
+                    // QuickLaunch embed flow should close picker after a successful selection.
+                    Cancelled?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
