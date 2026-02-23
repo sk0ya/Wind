@@ -103,7 +103,8 @@ public partial class MainWindow
                 }
                 else
                 {
-                    _viewModel.OpenWindowPickerCommand.Execute(null);
+                    // Launch from command palette without reopening the picker overlay.
+                    _viewModel.CloseWindowPickerCommand.Execute(null);
                     var pickerVm = (WindowPickerViewModel)WindowPickerControl.DataContext;
                     pickerVm.LaunchQuickAppCommand.Execute(app);
                 }
