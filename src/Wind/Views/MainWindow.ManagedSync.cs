@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Wind.Interop;
@@ -33,6 +34,7 @@ public partial class MainWindow
     private const uint EVENT_SYSTEM_MOVESIZESTART_M = 0x000A;
     private const uint EVENT_SYSTEM_MOVESIZEEND_M = 0x000B;
     private const uint EVENT_SYSTEM_MINIMIZESTART_M = 0x0016;
+    private const uint EVENT_SYSTEM_FOREGROUND_M = 0x0003;
     private const uint EVENT_OBJECT_LOCATIONCHANGE_M = 0x800B;
     private const uint WINEVENT_OUTOFCONTEXT_M = 0x0000;
     private const int OBJID_WINDOW_M = 0;
@@ -41,6 +43,7 @@ public partial class MainWindow
     private IntPtr _managedWinEventHookMoveSize;
     private IntPtr _managedWinEventHookMinimize;
     private IntPtr _managedWinEventHookLocation;
+    private IntPtr _managedWinEventHookForeground;
     private ManagedWinEventDelegate? _managedWinEventProc;
     private IntPtr _managedSyncWindowHandle;
     private bool _managedWindowMoveOrSizeInProgress;
@@ -56,7 +59,8 @@ public partial class MainWindow
         if (_managedSyncWindowHandle == handle &&
             (_managedWinEventHookMoveSize != IntPtr.Zero ||
              _managedWinEventHookMinimize != IntPtr.Zero ||
-             _managedWinEventHookLocation != IntPtr.Zero))
+             _managedWinEventHookLocation != IntPtr.Zero ||
+             _managedWinEventHookForeground != IntPtr.Zero))
         {
             return;
         }
@@ -96,6 +100,16 @@ public partial class MainWindow
             processId,
             0,
             WINEVENT_OUTOFCONTEXT_M);
+
+        // Foreground change must be global to catch transitions from other processes.
+        _managedWinEventHookForeground = SetWinEventHook(
+            EVENT_SYSTEM_FOREGROUND_M,
+            EVENT_SYSTEM_FOREGROUND_M,
+            IntPtr.Zero,
+            _managedWinEventProc,
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT_M);
     }
 
     private void RemoveManagedWindowSyncHooks()
@@ -116,6 +130,12 @@ public partial class MainWindow
         {
             UnhookWinEvent(_managedWinEventHookLocation);
             _managedWinEventHookLocation = IntPtr.Zero;
+        }
+
+        if (_managedWinEventHookForeground != IntPtr.Zero)
+        {
+            UnhookWinEvent(_managedWinEventHookForeground);
+            _managedWinEventHookForeground = IntPtr.Zero;
         }
 
         _managedWinEventProc = null;
@@ -143,24 +163,40 @@ public partial class MainWindow
         if (_managedSyncWindowHandle == IntPtr.Zero || hwnd != _managedSyncWindowHandle)
             return;
 
-        if (_isSyncingManagedWindowFromWind)
-            return;
-
-        if (Environment.TickCount64 <= _ignoreManagedWindowEventsUntilTick)
-            return;
-
         switch (eventType)
         {
+            case EVENT_SYSTEM_FOREGROUND_M:
+                EnsureWindBehindManagedWindow(hwnd);
+                return;
+
             case EVENT_SYSTEM_MOVESIZESTART_M:
+                if (_isSyncingManagedWindowFromWind ||
+                    Environment.TickCount64 <= _ignoreManagedWindowEventsUntilTick)
+                {
+                    return;
+                }
+
                 _managedWindowMoveOrSizeInProgress = true;
                 return;
 
             case EVENT_SYSTEM_MOVESIZEEND_M:
+                if (_isSyncingManagedWindowFromWind ||
+                    Environment.TickCount64 <= _ignoreManagedWindowEventsUntilTick)
+                {
+                    return;
+                }
+
                 _managedWindowMoveOrSizeInProgress = false;
                 SyncWindFromManagedWindow();
                 return;
 
             case EVENT_SYSTEM_MINIMIZESTART_M:
+                if (_isSyncingManagedWindowFromWind ||
+                    Environment.TickCount64 <= _ignoreManagedWindowEventsUntilTick)
+                {
+                    return;
+                }
+
                 // Keep managed app alive and map minimize intent to Wind minimize.
                 RestoreManagedWindowSilently(hwnd);
                 if (WindowState != WindowState.Minimized)
@@ -178,6 +214,12 @@ public partial class MainWindow
                 return;
 
             case EVENT_OBJECT_LOCATIONCHANGE_M:
+                if (_isSyncingManagedWindowFromWind ||
+                    Environment.TickCount64 <= _ignoreManagedWindowEventsUntilTick)
+                {
+                    return;
+                }
+
                 if (idObject != OBJID_WINDOW_M)
                     return;
 
@@ -191,6 +233,37 @@ public partial class MainWindow
                     SyncWindFromManagedWindow();
                 return;
         }
+    }
+
+    private void EnsureWindBehindManagedWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
+            return;
+
+        if (WindowState == WindowState.Minimized ||
+            _viewModel.IsWindowPickerOpen ||
+            _viewModel.IsCommandPaletteOpen ||
+            _viewModel.IsContentTabActive ||
+            _viewModel.IsWebTabActive ||
+            _viewModel.IsTileVisible)
+        {
+            return;
+        }
+
+        var windHwnd = new WindowInteropHelper(this).Handle;
+        if (windHwnd == IntPtr.Zero || windHwnd == hwnd || !NativeMethods.IsWindow(windHwnd))
+            return;
+
+        NativeMethods.SetWindowPos(
+            windHwnd,
+            hwnd,
+            0,
+            0,
+            0,
+            0,
+            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+
+        UpdateBackdropPosition();
     }
 
     private void HandleManagedWindowMaximize(IntPtr hwnd)
