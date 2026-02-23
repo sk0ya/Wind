@@ -157,6 +157,7 @@ public partial class TabManager
 
         string className = NativeMethods.GetWindowClassName(hwnd);
         if (_globalSystemWindowClasses.Contains(className)) return false;
+        if (WindowClassFilters.IsUnsupportedForEmbedding(className)) return false;
 
         return true;
     }

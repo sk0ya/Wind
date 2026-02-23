@@ -288,6 +288,7 @@ public partial class WindowHost
         // Skip ephemeral window classes
         string className = NativeMethods.GetWindowClassName(hwnd);
         if (_ephemeralWindowClasses.Contains(className)) return false;
+        if (WindowClassFilters.IsUnsupportedForEmbedding(className)) return false;
 
         return true;
     }

@@ -87,7 +87,7 @@ public partial class MainViewModel
         }
         else
         {
-            StatusMessage = "Failed to add window";
+            StatusMessage = _windowManager.LastEmbedFailureMessage ?? "Failed to add window";
         }
     }
 

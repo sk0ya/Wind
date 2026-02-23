@@ -10,6 +10,7 @@ public class WindowManager
     private readonly SettingsManager _settingsManager;
     private readonly HashSet<IntPtr> _embeddedWindows = new();
     private readonly Dictionary<IntPtr, WindowHost> _embeddedHosts = new();
+    public string? LastEmbedFailureMessage { get; private set; }
 
     public ObservableCollection<WindowInfo> AvailableWindows { get; } = new();
 
@@ -80,6 +81,7 @@ public class WindowManager
         // Skip certain system windows
         string className = NativeMethods.GetWindowClassName(hWnd);
         if (IsSystemWindow(className)) return false;
+        if (WindowClassFilters.TryGetUnsupportedReasonForEmbedding(hWnd, out _, deepInspection: false)) return false;
 
         return true;
     }
@@ -100,8 +102,25 @@ public class WindowManager
 
     public WindowHost? EmbedWindow(IntPtr handle)
     {
-        if (handle == IntPtr.Zero || _embeddedWindows.Contains(handle))
+        LastEmbedFailureMessage = null;
+
+        if (handle == IntPtr.Zero)
+        {
+            LastEmbedFailureMessage = "Failed to add window: invalid handle";
             return null;
+        }
+
+        if (_embeddedWindows.Contains(handle))
+        {
+            LastEmbedFailureMessage = "Failed to add window: already embedded";
+            return null;
+        }
+
+        if (WindowClassFilters.TryGetUnsupportedReasonForEmbedding(handle, out string reason))
+        {
+            LastEmbedFailureMessage = $"埋め込み非対応: {reason} (WinUI3/WinAppSDK は描画崩れ回避のため除外)";
+            return null;
+        }
 
         // Restore if minimized
         if (NativeMethods.IsIconic(handle))
