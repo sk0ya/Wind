@@ -18,7 +18,8 @@ internal static class WindowClassFilters
         "WinUIDesktopWin32WindowClass",
         "Microsoft.UI.Content.DesktopChildSiteBridge",
         "Microsoft.UI.Content.PopupWindowSiteBridge",
-        "Xaml_WindowedPopupClass"
+        "Xaml_WindowedPopupClass",
+        "PopupHost",            // WinUI/XAML popup host (e.g. Explorer address bar dropdown)
     };
 
     private static readonly string[] UnsupportedEmbeddedWindowClassPrefixes =
