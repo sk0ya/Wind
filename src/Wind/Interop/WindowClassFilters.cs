@@ -4,13 +4,6 @@ namespace Wind.Interop;
 
 internal static class WindowClassFilters
 {
-    // Explicitly allow known safe processes even when class/module heuristics
-    // would normally classify them as unsupported.
-    private static readonly HashSet<string> EmbeddingAllowlistedProcesses = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "explorer"
-    };
-
     // WinUI 3 desktop windows rely on a top-level DirectComposition pipeline.
     // Reparenting with SetParent/WS_POPUP causes rendering corruption.
     private static readonly HashSet<string> UnsupportedEmbeddedWindowClasses = new(StringComparer.OrdinalIgnoreCase)
@@ -66,11 +59,6 @@ internal static class WindowClassFilters
 
         string className = NativeMethods.GetWindowClassName(hwnd);
         bool hasOwningProcess = TryGetOwningProcessName(hwnd, out string owningProcess);
-
-        // Explorer currently loads WinUI-related modules, but folder windows remain embeddable.
-        // Keep this as an explicit allowlist so additional exclusions can be expanded safely.
-        if (hasOwningProcess && EmbeddingAllowlistedProcesses.Contains(owningProcess))
-            return false;
 
         if (IsUnsupportedForEmbedding(className))
         {
