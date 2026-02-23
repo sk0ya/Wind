@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Threading;
 
 namespace Wind.Interop;
 
@@ -301,16 +302,59 @@ public partial class WindowHost
         return true;
     }
 
+    private bool IsHostedDialogWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || hwnd == _hostedWindowHandle) return false;
+        if (!NativeMethods.IsWindow(hwnd) || !NativeMethods.IsWindowVisible(hwnd)) return false;
+
+        string className = NativeMethods.GetWindowClassName(hwnd);
+        if (!string.Equals(className, "#32770", StringComparison.Ordinal)) return false;
+
+        NativeMethods.GetWindowThreadProcessId(hwnd, out uint processId);
+        return processId == (uint)HostedProcessId;
+    }
+
+    private void EnsureHostedDialogIsInFront(IntPtr dialogHwnd)
+    {
+        if (!NativeMethods.IsWindow(dialogHwnd) || !NativeMethods.IsWindowVisible(dialogHwnd)) return;
+
+        var windRoot = _hwndHost != IntPtr.Zero
+            ? NativeMethods.GetAncestor(_hwndHost, NativeMethods.GA_ROOT)
+            : IntPtr.Zero;
+        if (windRoot == IntPtr.Zero) return;
+
+        var foreground = NativeMethods.GetForegroundWindow();
+        NativeMethods.GetWindowThreadProcessId(foreground, out uint foregroundPid);
+
+        if (foreground != windRoot &&
+            foreground != _hostedWindowHandle &&
+            foregroundPid != (uint)HostedProcessId)
+        {
+            return;
+        }
+
+        NativeMethods.ForceForegroundWindow(dialogHwnd);
+    }
+
     private void WinEventCallback(
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
     {
         // Detect new windows from the same process
-        if (eventType == EVENT_OBJECT_SHOW && idObject == OBJID_WINDOW &&
-            hwnd != _hostedWindowHandle && IsEmbeddableWindow(hwnd))
+        if (eventType == EVENT_OBJECT_SHOW && idObject == OBJID_WINDOW)
         {
-            NewWindowDetected?.Invoke(hwnd);
-            return;
+            // Keep hosted app dialogs (MessageBox class) in front of Wind.
+            if (IsHostedDialogWindow(hwnd))
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, () => EnsureHostedDialogIsInFront(hwnd));
+                return;
+            }
+
+            if (hwnd != _hostedWindowHandle && IsEmbeddableWindow(hwnd))
+            {
+                NewWindowDetected?.Invoke(hwnd);
+                return;
+            }
         }
 
         // WindがバックグラウンドのときにWS_POPUPの埋め込みアプリがフォアグラウンドになった場合、
