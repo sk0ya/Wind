@@ -16,8 +16,10 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly HotkeyManager _hotkeyManager;
     private readonly TabManager _tabManager;
+    private readonly WindowManager _windowManager;
     private readonly SettingsManager _settingsManager;
     private WindowHost? _currentHost;
+    private IntPtr _activeManagedWindowHandle;
     private Point? _dragStartPoint;
     private bool _isDragging;
     private readonly List<WindowHost> _tiledHosts = new();
@@ -45,6 +47,7 @@ public partial class MainWindow : Window
         _viewModel = App.GetService<MainViewModel>();
         _hotkeyManager = App.GetService<HotkeyManager>();
         _tabManager = App.GetService<TabManager>();
+        _windowManager = App.GetService<WindowManager>();
         _settingsManager = App.GetService<SettingsManager>();
 
         DataContext = _viewModel;
@@ -227,8 +230,17 @@ public partial class MainWindow : Window
 
             if (shouldWaitByPid)
             {
+                int processId = 0;
                 var host = _tabManager.GetWindowHost(tab);
-                if (host == null)
+                if (host != null)
+                {
+                    processId = host.HostedProcessId;
+                }
+                else if (_tabManager.IsExternallyManagedTab(tab) && tab.Window?.ProcessId is int managedPid)
+                {
+                    processId = managedPid;
+                }
+                else
                 {
                     tabIdsToWait.Add(tab.Id);
                     TryRemoveTab(tab);
@@ -240,9 +252,9 @@ public partial class MainWindow : Window
                     NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
 
-                if (host.HostedProcessId != 0 && IsProcessRunning(host.HostedProcessId))
+                if (processId != 0 && IsProcessRunning(processId))
                 {
-                    pidsToWait.Add(host.HostedProcessId);
+                    pidsToWait.Add(processId);
                 }
                 else
                 {
@@ -347,6 +359,8 @@ public partial class MainWindow : Window
         _isCleanupCompleted = true;
         _isWaitingForCloseTargets = false;
 
+        RemoveManagedWindowSyncHooks();
+
         _closeWaitCts?.Cancel();
         _closeWaitCts?.Dispose();
         _closeWaitCts = null;
@@ -386,16 +400,19 @@ public partial class MainWindow : Window
         _resizeHelper?.UpdatePositions();
         UpdateBlockerPosition();
         UpdateBackdropPosition();
+        UpdateManagedWindowLayout(activate: false);
     }
 
     private void MainWindow_LocationChanged(object? sender, EventArgs e)
     {
         UpdateBackdropPosition();
+        UpdateManagedWindowLayout(activate: false);
     }
 
     private void WindowHostContainer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateWindowHostSize();
+        UpdateManagedWindowLayout(activate: false);
     }
 
     private void UpdateBlockerPosition()
@@ -431,6 +448,8 @@ public partial class MainWindow : Window
             // Defer position update so layout completes first
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateBackdropPosition);
         }
+
+        UpdateManagedWindowLayout(activate: false);
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -480,6 +499,7 @@ public partial class MainWindow : Window
         }
 
         UpdateBackdropVisibility();
+        UpdateManagedWindowLayout(activate: false);
     }
 
     private void UpdateWindowHostSize()
@@ -496,5 +516,124 @@ public partial class MainWindow : Window
         {
             _currentHost.ResizeHostedWindow(width, height);
         }
+    }
+
+    private void UpdateManagedWindowLayout(bool activate)
+    {
+        if (_isSyncingWindFromManagedWindow)
+            return;
+
+        IntPtr targetHandle = IntPtr.Zero;
+        bool canShowManagedWindow =
+            !_viewModel.IsWindowPickerOpen &&
+            !_viewModel.IsCommandPaletteOpen &&
+            !_viewModel.IsContentTabActive &&
+            !_viewModel.IsWebTabActive &&
+            !_viewModel.IsTileVisible &&
+            WindowState != WindowState.Minimized &&
+            _viewModel.SelectedTab != null &&
+            _viewModel.TryGetExternallyManagedWindowHandle(_viewModel.SelectedTab, out targetHandle);
+
+        if (!canShowManagedWindow)
+        {
+            targetHandle = IntPtr.Zero;
+        }
+
+        _windowManager.MinimizeAllManagedWindowsExcept(targetHandle);
+
+        if (targetHandle == IntPtr.Zero)
+        {
+            RemoveManagedWindowSyncHooks();
+            _activeManagedWindowHandle = IntPtr.Zero;
+            return;
+        }
+
+        EnsureManagedWindowSyncHooks(targetHandle);
+
+        bool bringToFront = activate || targetHandle != _activeManagedWindowHandle;
+        var windHwnd = new WindowInteropHelper(this).Handle;
+
+        if (!TryGetManagedWindowBounds(out var bounds))
+        {
+            if (NativeMethods.GetWindowRect(targetHandle, out var currentRect))
+            {
+                _ignoreManagedWindowEventsUntilTick = Environment.TickCount64 + ManagedWindowEventIgnoreDurationMs;
+                _isSyncingManagedWindowFromWind = true;
+                try
+                {
+                    _windowManager.ActivateManagedWindow(
+                        targetHandle,
+                        currentRect.Left,
+                        currentRect.Top,
+                        Math.Max(1, currentRect.Width),
+                        Math.Max(1, currentRect.Height),
+                        bringToFront: false,
+                        windHwnd);
+                }
+                finally
+                {
+                    _isSyncingManagedWindowFromWind = false;
+                }
+            }
+
+            _activeManagedWindowHandle = targetHandle;
+            return;
+        }
+
+        _ignoreManagedWindowEventsUntilTick = Environment.TickCount64 + ManagedWindowEventIgnoreDurationMs;
+        _isSyncingManagedWindowFromWind = true;
+        try
+        {
+            _windowManager.ActivateManagedWindow(
+                targetHandle,
+                bounds.Left,
+                bounds.Top,
+                bounds.Width,
+                bounds.Height,
+                bringToFront,
+                windHwnd);
+        }
+        finally
+        {
+            _isSyncingManagedWindowFromWind = false;
+        }
+
+        _activeManagedWindowHandle = targetHandle;
+    }
+
+    private bool TryGetManagedWindowBounds(out NativeMethods.RECT bounds)
+    {
+        bounds = default;
+
+        double widthDip = WindowHostContainer.ActualWidth;
+        double heightDip = WindowHostContainer.ActualHeight;
+        if (widthDip <= 0 || heightDip <= 0)
+            return false;
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+            return false;
+
+        if (!NativeMethods.GetWindowRect(hwnd, out var windRect))
+            return false;
+
+        var source = PresentationSource.FromVisual(this);
+        double dpiScaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+        double dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+        Point contentOffsetDip = WindowHostContainer.TranslatePoint(new Point(0, 0), this);
+        int left = windRect.Left + (int)Math.Round(contentOffsetDip.X * dpiScaleX);
+        int top = windRect.Top + (int)Math.Round(contentOffsetDip.Y * dpiScaleY);
+        int width = Math.Max(1, (int)Math.Round(widthDip * dpiScaleX));
+        int height = Math.Max(1, (int)Math.Round(heightDip * dpiScaleY));
+
+        bounds = new NativeMethods.RECT
+        {
+            Left = left,
+            Top = top,
+            Right = left + width,
+            Bottom = top + height
+        };
+        return true;
     }
 }

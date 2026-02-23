@@ -131,7 +131,19 @@ public partial class MainWindow
         {
             var header = item.Header?.ToString() ?? "";
 
-            if (header.StartsWith("Startup"))
+            if (header == "タイル表示")
+            {
+                item.Visibility = isWindowTab && _tabManager.CanTileTab(tab)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+            else if (header == "タイル解除")
+            {
+                item.Visibility = isWindowTab && _tabManager.CanTileTab(tab) && tab.IsTiled
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+            else if (header.StartsWith("Startup"))
             {
                 if (!string.IsNullOrEmpty(path) && (isWindowTab || tab.IsWebTab))
                 {
@@ -157,7 +169,7 @@ public partial class MainWindow
                     item.Visibility = Visibility.Collapsed;
                 }
             }
-            else if (header is "ファイルパスをコピー" or "エクスプローラーで開く" or "タブ名を変更" or "埋め込み解除")
+            else if (header is "ファイルパスをコピー" or "エクスプローラーで開く" or "タブ名を変更" or "タブ管理を解除")
             {
                 item.Visibility = isWindowTab ? Visibility.Visible : Visibility.Collapsed;
             }
@@ -184,7 +196,7 @@ public partial class MainWindow
         if (tab.IsContentTab || tab.IsWebTab) return;
 
         _tabManager.RemoveTab(tab);
-        _viewModel.StatusMessage = $"埋め込み解除: {tab.DisplayTitle}";
+        _viewModel.StatusMessage = $"タブ管理を解除: {tab.DisplayTitle}";
     }
 
     private void ToggleStartup_Click(object sender, RoutedEventArgs e)

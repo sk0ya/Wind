@@ -57,6 +57,26 @@ public partial class TabManager
                 }
                 _windowHosts.Remove(tab.Id);
             }
+            else if (_externallyManagedWindows.TryGetValue(tab.Id, out var managedHandle))
+            {
+                if (tab.IsLaunchedAtStartup)
+                {
+                    var window = tab.Window;
+                    if (window != null && window.Handle != IntPtr.Zero)
+                    {
+                        if (window.ProcessId != 0)
+                            processIdsToKill.Add(window.ProcessId);
+                        NativeMethods.PostMessage(window.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    }
+                }
+                else
+                {
+                    SuppressAutoEmbedForWindow(managedHandle);
+                    _windowManager.ReleaseManagedWindow(managedHandle);
+                }
+
+                _externallyManagedWindows.Remove(tab.Id);
+            }
         }
         Tabs.Clear();
         ActiveTab = null;
@@ -75,12 +95,21 @@ public partial class TabManager
         {
             if (tab.IsContentTab || tab.IsWebTab) continue;
             if (startupOnly && !tab.IsLaunchedAtStartup) continue;
+            var window = tab.Window;
 
             if (_windowHosts.TryGetValue(tab.Id, out var host) &&
-                tab.Window?.Handle != IntPtr.Zero &&
+                window != null &&
+                window.Handle != IntPtr.Zero &&
                 host.HostedProcessId != 0)
             {
-                result.Add((tab.Window!.Handle, host.HostedProcessId));
+                result.Add((window.Handle, host.HostedProcessId));
+            }
+            else if (_externallyManagedWindows.ContainsKey(tab.Id) &&
+                     window != null &&
+                     window.Handle != IntPtr.Zero &&
+                     window.ProcessId != 0)
+            {
+                result.Add((window.Handle, window.ProcessId));
             }
         }
         return result;
@@ -103,6 +132,19 @@ public partial class TabManager
                     NativeMethods.PostMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
                 _windowHosts.Remove(tab.Id);
+            }
+            else if (_externallyManagedWindows.TryGetValue(tab.Id, out var managedHandle))
+            {
+                var window = tab.Window;
+                if (window != null && window.Handle != IntPtr.Zero)
+                {
+                    if (window.ProcessId != 0)
+                        processIdsToKill.Add(window.ProcessId);
+                    NativeMethods.PostMessage(window.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                }
+
+                _windowManager.ForgetManagedWindow(managedHandle);
+                _externallyManagedWindows.Remove(tab.Id);
             }
         }
         Tabs.Clear();
@@ -127,6 +169,12 @@ public partial class TabManager
                 SuppressAutoEmbedForWindow(host.HostedWindowHandle);
                 _windowManager.ReleaseWindow(host);
                 _windowHosts.Remove(tab.Id);
+            }
+            else if (_externallyManagedWindows.TryGetValue(tab.Id, out var managedHandle))
+            {
+                SuppressAutoEmbedForWindow(managedHandle);
+                _windowManager.ReleaseManagedWindow(managedHandle);
+                _externallyManagedWindows.Remove(tab.Id);
             }
         }
 
@@ -201,6 +249,8 @@ public partial class TabManager
 
         var tabList = tabs.ToList();
         if (tabList.Count < 2) return;
+        if (tabList.Any(t => !t.IsContentTab && !t.IsWebTab && !_windowHosts.ContainsKey(t.Id)))
+            return;
 
         CurrentTileLayout = new TileLayout(tabList);
         ClearMultiSelection();

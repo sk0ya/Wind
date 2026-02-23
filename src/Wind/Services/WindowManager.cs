@@ -10,6 +10,7 @@ public class WindowManager
     private readonly SettingsManager _settingsManager;
     private readonly HashSet<IntPtr> _embeddedWindows = new();
     private readonly Dictionary<IntPtr, WindowHost> _embeddedHosts = new();
+    private readonly Dictionary<IntPtr, ManagedWindowState> _managedWindowStates = new();
     public string? LastEmbedFailureMessage { get; private set; }
 
     public ObservableCollection<WindowInfo> AvailableWindows { get; } = new();
@@ -26,7 +27,8 @@ public class WindowManager
         var windows = EnumerateWindows();
         foreach (var window in windows)
         {
-            if (!_embeddedWindows.Contains(window.Handle))
+            if (!_embeddedWindows.Contains(window.Handle) &&
+                !_managedWindowStates.ContainsKey(window.Handle))
             {
                 AvailableWindows.Add(window);
             }
@@ -40,6 +42,9 @@ public class WindowManager
 
         NativeMethods.EnumWindows((hWnd, _) =>
         {
+            if (_embeddedWindows.Contains(hWnd) || _managedWindowStates.ContainsKey(hWnd))
+                return true;
+
             if (!IsValidWindow(hWnd, currentProcessId))
                 return true;
 
@@ -81,7 +86,6 @@ public class WindowManager
         // Skip certain system windows
         string className = NativeMethods.GetWindowClassName(hWnd);
         if (IsSystemWindow(className)) return false;
-        if (WindowClassFilters.TryGetUnsupportedReasonForEmbedding(hWnd, out _)) return false;
 
         return true;
     }
@@ -138,6 +142,179 @@ public class WindowManager
         };
 
         return host;
+    }
+
+    public bool TryManageWindow(IntPtr handle)
+    {
+        LastEmbedFailureMessage = null;
+
+        if (handle == IntPtr.Zero)
+        {
+            LastEmbedFailureMessage = "Failed to add window: invalid handle";
+            return false;
+        }
+
+        if (_embeddedWindows.Contains(handle) || _managedWindowStates.ContainsKey(handle))
+        {
+            LastEmbedFailureMessage = "Failed to add window: already managed";
+            return false;
+        }
+
+        if (!IsWindowValid(handle))
+        {
+            LastEmbedFailureMessage = "Failed to add window: window is no longer valid";
+            return false;
+        }
+
+        NativeMethods.GetWindowRect(handle, out var rect);
+
+        _managedWindowStates[handle] = new ManagedWindowState
+        {
+            OriginalRect = rect,
+            WasVisible = NativeMethods.IsWindowVisible(handle),
+            WasMinimized = NativeMethods.IsIconic(handle),
+            WasMaximized = NativeMethods.IsZoomed(handle)
+        };
+
+        return true;
+    }
+
+    public bool IsManaged(IntPtr handle)
+    {
+        return _managedWindowStates.ContainsKey(handle);
+    }
+
+    public void ActivateManagedWindow(
+        IntPtr handle,
+        int x,
+        int y,
+        int width,
+        int height,
+        bool bringToFront,
+        IntPtr windWindowHandle = default)
+    {
+        if (!_managedWindowStates.ContainsKey(handle)) return;
+        if (!NativeMethods.IsWindow(handle))
+        {
+            _managedWindowStates.Remove(handle);
+            return;
+        }
+
+        width = Math.Max(1, width);
+        height = Math.Max(1, height);
+
+        if (NativeMethods.IsIconic(handle))
+        {
+            NativeMethods.ShowWindow(handle, NativeMethods.SW_RESTORE);
+        }
+        else
+        {
+            NativeMethods.ShowWindow(handle, NativeMethods.SW_SHOW);
+        }
+
+        bool positioned = NativeMethods.SetWindowPos(
+            handle,
+            NativeMethods.HWND_TOP,
+            x,
+            y,
+            width,
+            height,
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+
+        if (!positioned)
+        {
+            NativeMethods.MoveWindow(handle, x, y, width, height, true);
+        }
+
+        if (windWindowHandle != IntPtr.Zero &&
+            windWindowHandle != handle &&
+            NativeMethods.IsWindow(windWindowHandle))
+        {
+            // Keep Wind directly behind the selected managed window so the managed app
+            // stays visible above Wind's content area.
+            NativeMethods.SetWindowPos(
+                windWindowHandle,
+                handle,
+                0,
+                0,
+                0,
+                0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+        }
+
+        if (bringToFront)
+        {
+            NativeMethods.ForceForegroundWindow(handle);
+        }
+    }
+
+    public void MinimizeManagedWindow(IntPtr handle)
+    {
+        if (!_managedWindowStates.ContainsKey(handle)) return;
+        if (!NativeMethods.IsWindow(handle))
+        {
+            _managedWindowStates.Remove(handle);
+            return;
+        }
+
+        NativeMethods.ShowWindow(handle, NativeMethods.SW_MINIMIZE);
+    }
+
+    public void MinimizeAllManagedWindowsExcept(IntPtr handleToKeep)
+    {
+        foreach (var handle in _managedWindowStates.Keys.ToList())
+        {
+            if (handle == handleToKeep) continue;
+            MinimizeManagedWindow(handle);
+        }
+    }
+
+    public void ReleaseManagedWindow(IntPtr handle)
+    {
+        if (!_managedWindowStates.TryGetValue(handle, out var state))
+            return;
+
+        _managedWindowStates.Remove(handle);
+
+        if (!NativeMethods.IsWindow(handle))
+            return;
+
+        if (state.OriginalRect.Width > 0 && state.OriginalRect.Height > 0)
+        {
+            bool restored = NativeMethods.SetWindowPos(
+                handle,
+                IntPtr.Zero,
+                state.OriginalRect.Left,
+                state.OriginalRect.Top,
+                state.OriginalRect.Width,
+                state.OriginalRect.Height,
+                NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+
+            if (!restored)
+            {
+                NativeMethods.MoveWindow(
+                    handle,
+                    state.OriginalRect.Left,
+                    state.OriginalRect.Top,
+                    state.OriginalRect.Width,
+                    state.OriginalRect.Height,
+                    true);
+            }
+        }
+
+        if (state.WasMinimized)
+            NativeMethods.ShowWindow(handle, NativeMethods.SW_MINIMIZE);
+        else if (state.WasMaximized)
+            NativeMethods.ShowWindow(handle, NativeMethods.SW_MAXIMIZE);
+        else if (state.WasVisible)
+            NativeMethods.ShowWindow(handle, NativeMethods.SW_SHOW);
+        else
+            NativeMethods.ShowWindow(handle, NativeMethods.SW_HIDE);
+    }
+
+    public void ForgetManagedWindow(IntPtr handle)
+    {
+        _managedWindowStates.Remove(handle);
     }
 
     public void ReleaseWindow(WindowHost? host)
@@ -274,5 +451,13 @@ public class WindowManager
             y -= h;
             if (w > columnMaxWidth) columnMaxWidth = w;
         }
+    }
+
+    private sealed class ManagedWindowState
+    {
+        public NativeMethods.RECT OriginalRect { get; init; }
+        public bool WasVisible { get; init; }
+        public bool WasMinimized { get; init; }
+        public bool WasMaximized { get; init; }
     }
 }

@@ -29,6 +29,7 @@ public partial class MainWindow
                     return;
 
                 UpdateWindowHost(_viewModel.CurrentWindowHost);
+                UpdateManagedWindowLayout(activate: false);
             });
         }
         else if (e.PropertyName == nameof(MainViewModel.ActiveContentKey))
@@ -39,6 +40,7 @@ public partial class MainWindow
                 if (_viewModel.IsContentTabActive)
                 {
                     ShowContentTab(_viewModel.ActiveContentKey);
+                    UpdateManagedWindowLayout(activate: false);
                 }
             });
         }
@@ -62,6 +64,7 @@ public partial class MainWindow
                     _currentWebTabId = null;
                     UpdateBackdropVisibility();
                     ShowContentTab(_viewModel.ActiveContentKey);
+                    UpdateManagedWindowLayout(activate: false);
                 }
                 else
                 {
@@ -78,6 +81,8 @@ public partial class MainWindow
                     {
                         UpdateWindowHost(_viewModel.CurrentWindowHost);
                     }
+
+                    UpdateManagedWindowLayout(activate: false);
                 }
             });
         }
@@ -100,6 +105,7 @@ public partial class MainWindow
 
                     ShowWebTab(_viewModel.ActiveWebTabId);
                     UpdateBackdropVisibility();
+                    UpdateManagedWindowLayout(activate: false);
                 }
                 else
                 {
@@ -114,6 +120,8 @@ public partial class MainWindow
                         if (_viewModel.CurrentWindowHost != null)
                             UpdateWindowHost(_viewModel.CurrentWindowHost);
                     }
+
+                    UpdateManagedWindowLayout(activate: false);
                 }
             });
         }
@@ -124,6 +132,7 @@ public partial class MainWindow
                 if (_viewModel.IsWebTabActive)
                 {
                     ShowWebTab(_viewModel.ActiveWebTabId);
+                    UpdateManagedWindowLayout(activate: false);
                 }
             });
         }
@@ -170,6 +179,7 @@ public partial class MainWindow
                             }
                         }
                         SuppressBorder();
+                        UpdateManagedWindowLayout(activate: false);
                     });
                 }
                 else
@@ -181,6 +191,7 @@ public partial class MainWindow
 
                     TileContainer.Visibility = Visibility.Collapsed;
                     WindowHostContainer.Visibility = Visibility.Visible;
+                    UpdateManagedWindowLayout(activate: false);
                 }
             });
         }
@@ -205,6 +216,8 @@ public partial class MainWindow
                     _currentHost.Visibility = Visibility.Hidden;
                 }
 
+                UpdateManagedWindowLayout(activate: false);
+
                 var palVm = (CommandPaletteViewModel)CommandPaletteControl.DataContext;
                 palVm.Open();
 
@@ -216,6 +229,7 @@ public partial class MainWindow
             else
             {
                 RestoreEmbeddedWindow();
+                UpdateManagedWindowLayout(activate: true);
             }
         }
         else if (e.PropertyName == nameof(MainViewModel.IsTiled))
@@ -225,6 +239,20 @@ public partial class MainWindow
                 // Tile layout fully destroyed — clean up hosts
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { ClearTileLayout(); });
             }
+        }
+        else if (e.PropertyName == nameof(MainViewModel.SelectedTab))
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                UpdateManagedWindowLayout(activate: true);
+            });
+        }
+        else if (e.PropertyName == nameof(MainViewModel.IsWindowPickerOpen))
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                UpdateManagedWindowLayout(activate: !_viewModel.IsWindowPickerOpen);
+            });
         }
     }
 

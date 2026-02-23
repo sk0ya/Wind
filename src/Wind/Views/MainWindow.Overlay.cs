@@ -29,6 +29,8 @@ public partial class MainWindow
         {
             _currentHost.Visibility = Visibility.Hidden;
         }
+
+        UpdateManagedWindowLayout(activate: false);
     }
 
     private void RestoreEmbeddedWindow()
@@ -52,6 +54,7 @@ public partial class MainWindow
             _resizeHelper?.SetVisible(true);
 
         UpdateBackdropVisibility();
+        UpdateManagedWindowLayout(activate: true);
 
         RequestEmbeddedContentRedraw();
     }

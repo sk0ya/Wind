@@ -129,6 +129,12 @@ public partial class MainViewModel
             return;
         }
 
+        if (selectedTabs.Any(t => !t.IsContentTab && !t.IsWebTab && !_tabManager.CanTileTab(t)))
+        {
+            StatusMessage = "外部管理タブを含むためタイル表示できません";
+            return;
+        }
+
         _tabManager.StartTile(selectedTabs);
         StatusMessage = $"Tiled {selectedTabs.Count} tabs";
     }

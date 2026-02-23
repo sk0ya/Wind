@@ -14,6 +14,7 @@ public partial class TabManager
     private readonly SettingsManager _settingsManager;
     private readonly ProcessTracker _processTracker;
     private readonly Dictionary<Guid, WindowHost> _windowHosts = new();
+    private readonly Dictionary<Guid, IntPtr> _externallyManagedWindows = new();
     private readonly Dictionary<Guid, WebTabControl> _webTabControls = new();
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _cleanupTimer;
@@ -100,21 +101,32 @@ public partial class TabManager
         if (!App.IsRunningAsAdmin() && NativeMethods.IsProcessElevated(windowInfo.Handle))
             return null;
 
-        var host = _windowManager.EmbedWindow(windowInfo.Handle);
-        if (host == null) return null;
-
-        _processTracker.Add(host.HostedProcessId);
-
         var tab = new TabItem(windowInfo);
-        _windowHosts[tab.Id] = host;
+        bool useExternalManagement = WindowClassFilters.TryGetUnsupportedReasonForEmbedding(windowInfo.Handle, out _);
 
-        // Subscribe to hosted window events
-        host.HostedWindowClosed += (s, e) => OnHostedWindowClosed(tab);
-        host.MinimizeRequested += (s, e) => MinimizeRequested?.Invoke(this, EventArgs.Empty);
-        host.MaximizeRequested += (s, e) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
-        host.MoveRequested += (dx, dy) => MoveRequested?.Invoke(dx, dy);
-        host.NewWindowDetected += hwnd => OnNewWindowDetected(hwnd);
-        host.BringToFrontRequested += (s, e) => BringToFrontRequested?.Invoke(this, EventArgs.Empty);
+        if (useExternalManagement)
+        {
+            if (!_windowManager.TryManageWindow(windowInfo.Handle))
+                return null;
+
+            _externallyManagedWindows[tab.Id] = windowInfo.Handle;
+        }
+        else
+        {
+            var host = _windowManager.EmbedWindow(windowInfo.Handle);
+            if (host == null) return null;
+
+            _processTracker.Add(host.HostedProcessId);
+            _windowHosts[tab.Id] = host;
+
+            // Subscribe to hosted window events
+            host.HostedWindowClosed += (s, e) => OnHostedWindowClosed(tab);
+            host.MinimizeRequested += (s, e) => MinimizeRequested?.Invoke(this, EventArgs.Empty);
+            host.MaximizeRequested += (s, e) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
+            host.MoveRequested += (dx, dy) => MoveRequested?.Invoke(dx, dy);
+            host.NewWindowDetected += hwnd => OnNewWindowDetected(hwnd);
+            host.BringToFrontRequested += (s, e) => BringToFrontRequested?.Invoke(this, EventArgs.Empty);
+        }
 
         Tabs.Add(tab);
 
@@ -260,6 +272,11 @@ public partial class TabManager
             _processTracker.Remove(host.HostedProcessId);
             _windowHosts.Remove(tab.Id);
         }
+        else if (_externallyManagedWindows.TryGetValue(tab.Id, out var managedHandle))
+        {
+            _windowManager.ForgetManagedWindow(managedHandle);
+            _externallyManagedWindows.Remove(tab.Id);
+        }
 
         tab.Group?.RemoveTab(tab);
 
@@ -299,6 +316,12 @@ public partial class TabManager
             SuppressAutoEmbedForWindow(host.HostedWindowHandle);
             _windowManager.ReleaseWindow(host);
             _windowHosts.Remove(tab.Id);
+        }
+        else if (!tab.IsContentTab && _externallyManagedWindows.TryGetValue(tab.Id, out var managedHandle))
+        {
+            SuppressAutoEmbedForWindow(managedHandle);
+            _windowManager.ReleaseManagedWindow(managedHandle);
+            _externallyManagedWindows.Remove(tab.Id);
         }
 
         // Remove from group if in one
@@ -344,6 +367,13 @@ public partial class TabManager
                 {
                     NativeMethods.PostMessage(tab.Window!.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
+
+                if (_externallyManagedWindows.TryGetValue(tab.Id, out var managedHandle))
+                {
+                    _windowManager.ForgetManagedWindow(managedHandle);
+                    _externallyManagedWindows.Remove(tab.Id);
+                }
+
                 RemoveTab(tab);
                 break;
 
@@ -358,6 +388,12 @@ public partial class TabManager
                     SuppressAutoEmbedForWindow(host.HostedWindowHandle);
                     _windowManager.ReleaseWindow(host);
                     _windowHosts.Remove(tab.Id);
+                }
+                else if (!tab.IsContentTab && _externallyManagedWindows.TryGetValue(tab.Id, out var managedHandleToRelease))
+                {
+                    SuppressAutoEmbedForWindow(managedHandleToRelease);
+                    _windowManager.ReleaseManagedWindow(managedHandleToRelease);
+                    _externallyManagedWindows.Remove(tab.Id);
                 }
 
                 // Remove from group if in one
@@ -397,6 +433,21 @@ public partial class TabManager
     public WindowHost? GetWindowHost(TabItem tab)
     {
         return _windowHosts.TryGetValue(tab.Id, out var host) ? host : null;
+    }
+
+    public bool IsExternallyManagedTab(TabItem tab)
+    {
+        return _externallyManagedWindows.ContainsKey(tab.Id);
+    }
+
+    public bool TryGetExternallyManagedWindowHandle(TabItem tab, out IntPtr handle)
+    {
+        return _externallyManagedWindows.TryGetValue(tab.Id, out handle);
+    }
+
+    public bool CanTileTab(TabItem tab)
+    {
+        return _windowHosts.ContainsKey(tab.Id);
     }
 
     public void SelectTab(int index)

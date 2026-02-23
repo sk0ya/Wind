@@ -25,6 +25,7 @@ internal static class NativeMethods
     public const uint WS_EX_LAYERED = 0x00080000;
 
     public static readonly IntPtr HWND_TOPMOST = new(-1);
+    public static readonly IntPtr HWND_TOP = IntPtr.Zero;
 
     public const uint SWP_NOZORDER = 0x0004;
     public const uint SWP_NOACTIVATE = 0x0010;
@@ -35,7 +36,10 @@ internal static class NativeMethods
     public const uint SWP_NOSIZE = 0x0001;
 
     public const int SW_SHOW = 5;
+    public const int SW_HIDE = 0;
+    public const int SW_MINIMIZE = 6;
     public const int SW_RESTORE = 9;
+    public const int SW_MAXIMIZE = 3;
 
     public const uint RDW_INVALIDATE = 0x0001;
     public const uint RDW_ERASE = 0x0004;
@@ -96,6 +100,10 @@ internal static class NativeMethods
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsZoomed(IntPtr hWnd);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);

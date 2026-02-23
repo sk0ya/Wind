@@ -187,6 +187,16 @@ public partial class MainViewModel : ObservableObject
         return _tabManager.GetWindowHost(tab);
     }
 
+    public bool IsExternallyManagedTab(TabItem tab)
+    {
+        return _tabManager.IsExternallyManagedTab(tab);
+    }
+
+    public bool TryGetExternallyManagedWindowHandle(TabItem tab, out IntPtr handle)
+    {
+        return _tabManager.TryGetExternallyManagedWindowHandle(tab, out handle);
+    }
+
     public void AddTabToGroup(TabItem tab, TabGroup group)
     {
         _tabManager.AddTabToGroup(tab, group);

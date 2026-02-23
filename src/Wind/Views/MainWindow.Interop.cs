@@ -30,6 +30,9 @@ public partial class MainWindow
         // only if the mouse is over the content area (not the tab bar).
         if (_viewModel.IsWindowPickerOpen) return;
 
+        UpdateManagedWindowLayout(activate: false);
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => UpdateManagedWindowLayout(activate: false));
+
         Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
             if (_currentHost == null) return;
