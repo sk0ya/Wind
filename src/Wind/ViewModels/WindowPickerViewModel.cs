@@ -49,6 +49,7 @@ public partial class WindowPickerViewModel : ObservableObject
     public event EventHandler<WindowInfo>? WindowSelected;
     public event EventHandler? Cancelled;
     public event EventHandler<string>? WebTabRequested;
+    public event EventHandler? QuickLaunchSettingsRequested;
 
     public WindowPickerViewModel(WindowManager windowManager, SettingsManager settingsManager)
     {
@@ -155,6 +156,14 @@ public partial class WindowPickerViewModel : ObservableObject
     private void Cancel()
     {
         Cancelled?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void OpenQuickLaunchSettings()
+    {
+        _launchCts?.Cancel();
+        IsLaunching = false;
+        QuickLaunchSettingsRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]

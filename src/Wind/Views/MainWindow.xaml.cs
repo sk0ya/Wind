@@ -71,6 +71,12 @@ public partial class MainWindow : Window
             _viewModel.CloseWindowPickerCommand.Execute(null);
             RestoreEmbeddedWindow();
         };
+        pickerVm.QuickLaunchSettingsRequested += (s, e) =>
+        {
+            _viewModel.CloseWindowPickerCommand.Execute(null);
+            RestoreEmbeddedWindow();
+            _viewModel.OpenContentTabCommand.Execute("QuickLaunchSettings");
+        };
         pickerVm.WebTabRequested += (s, url) =>
         {
             _viewModel.CloseWindowPickerCommand.Execute(null);

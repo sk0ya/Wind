@@ -115,6 +115,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="{Binding AvailableWindows.Count, StringFormat='{}{0} windows available'}"
@@ -131,10 +132,13 @@
                                Visibility="{Binding IsSelectedWindowElevated, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 </StackPanel>
 
-                <ui:Button Grid.Column="2" Content="Cancel"
+                <ui:Button Grid.Column="2" Content="QuickLaunch設定"
+                           Command="{Binding OpenQuickLaunchSettingsCommand}"
+                           Appearance="Secondary" Padding="16,8" Margin="0,0,8,0"/>
+                <ui:Button Grid.Column="3" Content="Cancel"
                            Command="{Binding CancelCommand}"
                            Appearance="Secondary" Padding="24,8" Margin="0,0,8,0"/>
-                <ui:Button Grid.Column="3" Content="Add Window"
+                <ui:Button Grid.Column="4" Content="Add Window"
                            Command="{Binding SelectCommand}"
                            Appearance="Primary" Padding="24,8"
                            IsEnabled="{Binding CanAddSelectedWindow}"/>
