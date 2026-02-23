@@ -4,6 +4,13 @@ namespace Wind.Interop;
 
 internal static class WindowClassFilters
 {
+    // Explicitly allow known safe processes even when class/module heuristics
+    // would normally classify them as unsupported.
+    private static readonly HashSet<string> EmbeddingAllowlistedProcesses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "explorer"
+    };
+
     // WinUI 3 desktop windows rely on a top-level DirectComposition pipeline.
     // Reparenting with SetParent/WS_POPUP causes rendering corruption.
     private static readonly HashSet<string> UnsupportedEmbeddedWindowClasses = new(StringComparer.OrdinalIgnoreCase)
@@ -25,6 +32,12 @@ internal static class WindowClassFilters
     private static readonly HashSet<string> WinUi3ModuleNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "Microsoft.UI.Xaml.dll"
+    };
+
+    private static readonly HashSet<string> UnsupportedApplicationFrameProcesses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ApplicationFrameHost",
+        "SystemSettings"
     };
 
     public static bool IsUnsupportedForEmbedding(string className)
@@ -51,6 +64,13 @@ internal static class WindowClassFilters
             return false;
 
         string className = NativeMethods.GetWindowClassName(hwnd);
+        bool hasOwningProcess = TryGetOwningProcessName(hwnd, out string owningProcess);
+
+        // Explorer currently loads WinUI-related modules, but folder windows remain embeddable.
+        // Keep this as an explicit allowlist so additional exclusions can be expanded safely.
+        if (hasOwningProcess && EmbeddingAllowlistedProcesses.Contains(owningProcess))
+            return false;
+
         if (IsUnsupportedForEmbedding(className))
         {
             reason = $"class={className}";
@@ -60,9 +80,8 @@ internal static class WindowClassFilters
         // UWP/immersive windows (including Windows Settings) are typically hosted
         // by ApplicationFrameWindow and are unstable when reparented.
         if (string.Equals(className, "ApplicationFrameWindow", StringComparison.OrdinalIgnoreCase) &&
-            TryGetOwningProcessName(hwnd, out string owningProcess) &&
-            (string.Equals(owningProcess, "ApplicationFrameHost", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(owningProcess, "SystemSettings", StringComparison.OrdinalIgnoreCase)))
+            hasOwningProcess &&
+            UnsupportedApplicationFrameProcesses.Contains(owningProcess))
         {
             reason = $"class={className}, process={owningProcess}";
             return true;
