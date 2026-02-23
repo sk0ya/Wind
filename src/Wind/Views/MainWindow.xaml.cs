@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         SizeChanged += MainWindow_SizeChanged;
         LocationChanged += MainWindow_LocationChanged;
         Activated += MainWindow_Activated;
+        Deactivated += MainWindow_Deactivated;
         WindowHostContainer.SizeChanged += WindowHostContainer_SizeChanged;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;

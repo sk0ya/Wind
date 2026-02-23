@@ -48,6 +48,13 @@ public partial class MainWindow
         });
     }
 
+    private void MainWindow_Deactivated(object? sender, EventArgs e)
+    {
+        // Force re-foreground on the next activation so externally managed windows
+        // (notably WinUI3) receive a fresh present path instead of stale black frames.
+        _activeManagedWindowHandle = IntPtr.Zero;
+    }
+
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         const int WM_ERASEBKGND = 0x0014;
