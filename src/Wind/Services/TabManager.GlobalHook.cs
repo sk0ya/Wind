@@ -39,6 +39,7 @@ public partial class TabManager
         "SysShadow",        // Shadow
         "IME",              // IME window
         "MSCTFIME UI",      // IME UI
+        "PopupHost",        // WinUI/XAML popup host (transient, not embeddable)
     };
 
     private IntPtr _globalWindowHook = IntPtr.Zero;

@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private string _currentTabPosition = "Top";
     private WindowResizeHelper? _resizeHelper;
     private bool _isTabBarCollapsed;
+    private bool _wasMinimized;
     private readonly BackdropWindow _backdropWindow = new();
     private readonly Dictionary<Guid, WebTabControl> _webTabControls = new();
     private Guid? _currentWebTabId;
@@ -445,10 +446,27 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Defer position update so layout completes first
-            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateBackdropPosition);
+            // UpdateBackdropVisibility instead of UpdateBackdropPosition: the backdrop is
+            // hidden when Wind is minimized, so UpdateBackdropPosition (which returns early
+            // when the backdrop is not visible) would leave it hidden after restore.
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateBackdropVisibility);
+
+            if (_wasMinimized)
+            {
+                // Re-assert the borderless frame in case DWM reset it during restore.
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => SuppressBorder());
+
+                // WS_POPUP + SetParent embedded windows may not redraw when the parent
+                // HWND is re-shown after minimize. Compensate with explicit redraws.
+                RequestEmbeddedContentRedraw();
+
+                // Allow UpdateManagedWindowLayout to bring the managed window to the
+                // foreground regardless of whether the handle has changed since minimize.
+                _activeManagedWindowHandle = IntPtr.Zero;
+            }
         }
 
+        _wasMinimized = WindowState == WindowState.Minimized;
         UpdateManagedWindowLayout(activate: false);
     }
 
@@ -555,6 +573,10 @@ public partial class MainWindow : Window
 
         if (!TryGetManagedWindowBounds(out var bounds))
         {
+            // Layout is not ready yet. Keep the managed window at its current position
+            // without updating _activeManagedWindowHandle, so the next call (once layout
+            // has settled) still treats this as a first-time activation and can set
+            // bringToFront correctly.
             if (NativeMethods.GetWindowRect(targetHandle, out var currentRect))
             {
                 _ignoreManagedWindowEventsUntilTick = Environment.TickCount64 + ManagedWindowEventIgnoreDurationMs;
@@ -576,7 +598,6 @@ public partial class MainWindow : Window
                 }
             }
 
-            _activeManagedWindowHandle = targetHandle;
             return;
         }
 
