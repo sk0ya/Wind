@@ -16,10 +16,8 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly HotkeyManager _hotkeyManager;
     private readonly TabManager _tabManager;
-    private readonly WindowManager _windowManager;
     private readonly SettingsManager _settingsManager;
     private WindowHost? _currentHost;
-    private IntPtr _activeManagedWindowHandle;
     private Point? _dragStartPoint;
     private bool _isDragging;
     private readonly List<WindowHost> _tiledHosts = new();
@@ -460,15 +458,15 @@ public partial class MainWindow : Window
                 // WS_POPUP + SetParent embedded windows may not redraw when the parent
                 // HWND is re-shown after minimize. Compensate with explicit redraws.
                 RequestEmbeddedContentRedraw();
-
-                // Allow UpdateManagedWindowLayout to bring the managed window to the
-                // foreground regardless of whether the handle has changed since minimize.
-                _activeManagedWindowHandle = IntPtr.Zero;
             }
         }
 
+        // Track whether we're restoring from minimize before updating the flag.
+        bool wasRestored = _wasMinimized && WindowState != WindowState.Minimized;
         _wasMinimized = WindowState == WindowState.Minimized;
-        UpdateManagedWindowLayout(activate: false);
+
+        // Delegate externally-managed-window (WinUI3/Explorer) layout to ManagedSync.
+        OnWindStateChangedManagedSync(wasRestored);
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -537,125 +535,4 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateManagedWindowLayout(bool activate)
-    {
-        if (_isSyncingWindFromManagedWindow)
-            return;
-
-        IntPtr targetHandle = IntPtr.Zero;
-        bool canShowManagedWindow =
-            !_viewModel.IsWindowPickerOpen &&
-            !_viewModel.IsCommandPaletteOpen &&
-            !_viewModel.IsContentTabActive &&
-            !_viewModel.IsWebTabActive &&
-            !_viewModel.IsTileVisible &&
-            WindowState != WindowState.Minimized &&
-            _viewModel.SelectedTab != null &&
-            _viewModel.TryGetExternallyManagedWindowHandle(_viewModel.SelectedTab, out targetHandle);
-
-        if (!canShowManagedWindow)
-        {
-            targetHandle = IntPtr.Zero;
-        }
-
-        _windowManager.MinimizeAllManagedWindowsExcept(targetHandle);
-
-        if (targetHandle == IntPtr.Zero)
-        {
-            RemoveManagedWindowSyncHooks();
-            _activeManagedWindowHandle = IntPtr.Zero;
-            return;
-        }
-
-        EnsureManagedWindowSyncHooks(targetHandle);
-
-        bool bringToFront = activate || targetHandle != _activeManagedWindowHandle;
-        var windHwnd = new WindowInteropHelper(this).Handle;
-
-        if (!TryGetManagedWindowBounds(out var bounds))
-        {
-            // Layout is not ready yet. Keep the managed window at its current position
-            // without updating _activeManagedWindowHandle, so the next call (once layout
-            // has settled) still treats this as a first-time activation and can set
-            // bringToFront correctly.
-            if (NativeMethods.GetWindowRect(targetHandle, out var currentRect))
-            {
-                _ignoreManagedWindowEventsUntilTick = Environment.TickCount64 + ManagedWindowEventIgnoreDurationMs;
-                _isSyncingManagedWindowFromWind = true;
-                try
-                {
-                    _windowManager.ActivateManagedWindow(
-                        targetHandle,
-                        currentRect.Left,
-                        currentRect.Top,
-                        Math.Max(1, currentRect.Width),
-                        Math.Max(1, currentRect.Height),
-                        bringToFront: false,
-                        windHwnd);
-                }
-                finally
-                {
-                    _isSyncingManagedWindowFromWind = false;
-                }
-            }
-
-            return;
-        }
-
-        _ignoreManagedWindowEventsUntilTick = Environment.TickCount64 + ManagedWindowEventIgnoreDurationMs;
-        _isSyncingManagedWindowFromWind = true;
-        try
-        {
-            _windowManager.ActivateManagedWindow(
-                targetHandle,
-                bounds.Left,
-                bounds.Top,
-                bounds.Width,
-                bounds.Height,
-                bringToFront,
-                windHwnd);
-        }
-        finally
-        {
-            _isSyncingManagedWindowFromWind = false;
-        }
-
-        _activeManagedWindowHandle = targetHandle;
-    }
-
-    private bool TryGetManagedWindowBounds(out NativeMethods.RECT bounds)
-    {
-        bounds = default;
-
-        double widthDip = WindowHostContainer.ActualWidth;
-        double heightDip = WindowHostContainer.ActualHeight;
-        if (widthDip <= 0 || heightDip <= 0)
-            return false;
-
-        var hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd == IntPtr.Zero)
-            return false;
-
-        if (!NativeMethods.GetWindowRect(hwnd, out var windRect))
-            return false;
-
-        var source = PresentationSource.FromVisual(this);
-        double dpiScaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-        double dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
-
-        Point contentOffsetDip = WindowHostContainer.TranslatePoint(new Point(0, 0), this);
-        int left = windRect.Left + (int)Math.Round(contentOffsetDip.X * dpiScaleX);
-        int top = windRect.Top + (int)Math.Round(contentOffsetDip.Y * dpiScaleY);
-        int width = Math.Max(1, (int)Math.Round(widthDip * dpiScaleX));
-        int height = Math.Max(1, (int)Math.Round(heightDip * dpiScaleY));
-
-        bounds = new NativeMethods.RECT
-        {
-            Left = left,
-            Top = top,
-            Right = left + width,
-            Bottom = top + height
-        };
-        return true;
-    }
 }

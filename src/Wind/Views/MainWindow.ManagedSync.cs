@@ -4,11 +4,19 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Wind.Interop;
+using Wind.Services;
 
 namespace Wind.Views;
 
 public partial class MainWindow
 {
+    // ── Fields owned by the managed-sync subsystem ───────────────────────────
+
+    private readonly WindowManager _windowManager;
+    private IntPtr _activeManagedWindowHandle;
+
+    // ── WinEvent hook infrastructure ─────────────────────────────────────────
+
     private delegate void ManagedWinEventDelegate(
         IntPtr hWinEventHook,
         uint eventType,
@@ -46,10 +54,45 @@ public partial class MainWindow
     private IntPtr _managedWinEventHookForeground;
     private ManagedWinEventDelegate? _managedWinEventProc;
     private IntPtr _managedSyncWindowHandle;
-    private bool _managedWindowMoveOrSizeInProgress;
     private bool _isSyncingManagedWindowFromWind;
     private bool _isSyncingWindFromManagedWindow;
     private long _ignoreManagedWindowEventsUntilTick;
+    private bool _suppressManagedMinimizeIntent;
+
+    private bool IsManagedWindowSyncSuppressed()
+    {
+        return _suppressManagedMinimizeIntent ||
+               _viewModel.IsWindowPickerOpen ||
+               _viewModel.IsCommandPaletteOpen ||
+               _viewModel.IsContentTabActive ||
+               _viewModel.IsWebTabActive ||
+               _viewModel.IsTileVisible;
+    }
+
+    private void MirrorManagedWindowMinimizeIntent(IntPtr hwnd)
+    {
+        if (_managedSyncWindowHandle == IntPtr.Zero || hwnd != _managedSyncWindowHandle)
+            return;
+
+        if (_isSyncingManagedWindowFromWind || IsManagedWindowSyncSuppressed())
+            return;
+
+        // Keep managed app alive and map minimize intent to Wind minimize.
+        RestoreManagedWindowSilently(hwnd);
+
+        if (WindowState != WindowState.Minimized)
+        {
+            _isSyncingWindFromManagedWindow = true;
+            try
+            {
+                WindowState = WindowState.Minimized;
+            }
+            finally
+            {
+                _isSyncingWindFromManagedWindow = false;
+            }
+        }
+    }
 
     private void EnsureManagedWindowSyncHooks(IntPtr handle)
     {
@@ -140,7 +183,6 @@ public partial class MainWindow
 
         _managedWinEventProc = null;
         _managedSyncWindowHandle = IntPtr.Zero;
-        _managedWindowMoveOrSizeInProgress = false;
     }
 
     private void ManagedWindowWinEventCallback(
@@ -176,7 +218,6 @@ public partial class MainWindow
                     return;
                 }
 
-                _managedWindowMoveOrSizeInProgress = true;
                 return;
 
             case EVENT_SYSTEM_MOVESIZEEND_M:
@@ -186,31 +227,11 @@ public partial class MainWindow
                     return;
                 }
 
-                _managedWindowMoveOrSizeInProgress = false;
                 SyncWindFromManagedWindow();
                 return;
 
             case EVENT_SYSTEM_MINIMIZESTART_M:
-                if (_isSyncingManagedWindowFromWind ||
-                    Environment.TickCount64 <= _ignoreManagedWindowEventsUntilTick)
-                {
-                    return;
-                }
-
-                // Keep managed app alive and map minimize intent to Wind minimize.
-                RestoreManagedWindowSilently(hwnd);
-                if (WindowState != WindowState.Minimized)
-                {
-                    _isSyncingWindFromManagedWindow = true;
-                    try
-                    {
-                        WindowState = WindowState.Minimized;
-                    }
-                    finally
-                    {
-                        _isSyncingWindFromManagedWindow = false;
-                    }
-                }
+                MirrorManagedWindowMinimizeIntent(hwnd);
                 return;
 
             case EVENT_OBJECT_LOCATIONCHANGE_M:
@@ -229,8 +250,7 @@ public partial class MainWindow
                     return;
                 }
 
-                if (_managedWindowMoveOrSizeInProgress || !NativeMethods.IsIconic(_managedSyncWindowHandle))
-                    SyncWindFromManagedWindow();
+                SyncWindFromManagedWindow();
                 return;
         }
     }
@@ -241,11 +261,7 @@ public partial class MainWindow
             return;
 
         if (WindowState == WindowState.Minimized ||
-            _viewModel.IsWindowPickerOpen ||
-            _viewModel.IsCommandPaletteOpen ||
-            _viewModel.IsContentTabActive ||
-            _viewModel.IsWebTabActive ||
-            _viewModel.IsTileVisible)
+            IsManagedWindowSyncSuppressed())
         {
             return;
         }
@@ -315,11 +331,7 @@ public partial class MainWindow
         if (_managedSyncWindowHandle == IntPtr.Zero)
             return;
 
-        if (_viewModel.IsWindowPickerOpen ||
-            _viewModel.IsCommandPaletteOpen ||
-            _viewModel.IsContentTabActive ||
-            _viewModel.IsWebTabActive ||
-            _viewModel.IsTileVisible)
+        if (IsManagedWindowSyncSuppressed())
         {
             return;
         }
@@ -415,6 +427,158 @@ public partial class MainWindow
 
         frameExtraWidthDip = ActualWidth - containerWidthDip;
         frameExtraHeightDip = ActualHeight - containerHeightDip;
+        return true;
+    }
+
+    // ── Managed-window layout ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by Window_StateChanged to handle WinUI3/externally managed window
+    /// state changes without mixing that logic into the embedded-app path.
+    /// <paramref name="wasRestored"/> is true when the previous state was minimized
+    /// and the window is now being restored (i.e. coming out of minimize).
+    /// </summary>
+    private void OnWindStateChangedManagedSync(bool wasRestored)
+    {
+        if (wasRestored)
+        {
+            // Allow UpdateManagedWindowLayout to bring the managed window to the
+            // foreground regardless of whether the handle has changed since minimize.
+            _activeManagedWindowHandle = IntPtr.Zero;
+        }
+
+        UpdateManagedWindowLayout(activate: false);
+    }
+
+    private void UpdateManagedWindowLayout(bool activate)
+    {
+        if (_isSyncingWindFromManagedWindow)
+            return;
+
+        IntPtr targetHandle = IntPtr.Zero;
+        bool canShowManagedWindow =
+            !_viewModel.IsWindowPickerOpen &&
+            !_viewModel.IsCommandPaletteOpen &&
+            !_viewModel.IsContentTabActive &&
+            !_viewModel.IsWebTabActive &&
+            !_viewModel.IsTileVisible &&
+            WindowState != WindowState.Minimized &&
+            _viewModel.SelectedTab != null &&
+            _viewModel.TryGetExternallyManagedWindowHandle(_viewModel.SelectedTab, out targetHandle);
+
+        if (!canShowManagedWindow)
+        {
+            targetHandle = IntPtr.Zero;
+        }
+
+        if (targetHandle == IntPtr.Zero)
+        {
+            _suppressManagedMinimizeIntent = true;
+            try
+            {
+                _windowManager.MinimizeAllManagedWindowsExcept(targetHandle);
+                RemoveManagedWindowSyncHooks();
+                _activeManagedWindowHandle = IntPtr.Zero;
+            }
+            finally
+            {
+                _suppressManagedMinimizeIntent = false;
+            }
+
+            return;
+        }
+
+        _windowManager.MinimizeAllManagedWindowsExcept(targetHandle);
+
+        EnsureManagedWindowSyncHooks(targetHandle);
+
+        bool bringToFront = activate || targetHandle != _activeManagedWindowHandle;
+        var windHwnd = new WindowInteropHelper(this).Handle;
+
+        if (!TryGetManagedWindowBounds(out var bounds))
+        {
+            // Layout is not ready yet. Keep the managed window at its current position
+            // without updating _activeManagedWindowHandle, so the next call (once layout
+            // has settled) still treats this as a first-time activation and can set
+            // bringToFront correctly.
+            if (NativeMethods.GetWindowRect(targetHandle, out var currentRect))
+            {
+                _ignoreManagedWindowEventsUntilTick = Environment.TickCount64 + ManagedWindowEventIgnoreDurationMs;
+                _isSyncingManagedWindowFromWind = true;
+                try
+                {
+                    _windowManager.ActivateManagedWindow(
+                        targetHandle,
+                        currentRect.Left,
+                        currentRect.Top,
+                        Math.Max(1, currentRect.Width),
+                        Math.Max(1, currentRect.Height),
+                        bringToFront: false,
+                        windHwnd);
+                }
+                finally
+                {
+                    _isSyncingManagedWindowFromWind = false;
+                }
+            }
+
+            return;
+        }
+
+        _ignoreManagedWindowEventsUntilTick = Environment.TickCount64 + ManagedWindowEventIgnoreDurationMs;
+        _isSyncingManagedWindowFromWind = true;
+        try
+        {
+            _windowManager.ActivateManagedWindow(
+                targetHandle,
+                bounds.Left,
+                bounds.Top,
+                bounds.Width,
+                bounds.Height,
+                bringToFront,
+                windHwnd);
+        }
+        finally
+        {
+            _isSyncingManagedWindowFromWind = false;
+        }
+
+        _activeManagedWindowHandle = targetHandle;
+    }
+
+    private bool TryGetManagedWindowBounds(out NativeMethods.RECT bounds)
+    {
+        bounds = default;
+
+        double widthDip = WindowHostContainer.ActualWidth;
+        double heightDip = WindowHostContainer.ActualHeight;
+        if (widthDip <= 0 || heightDip <= 0)
+            return false;
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+            return false;
+
+        if (!NativeMethods.GetWindowRect(hwnd, out var windRect))
+            return false;
+
+        var source = PresentationSource.FromVisual(this);
+        double dpiScaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+        double dpiScaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+        Point contentOffsetDip = WindowHostContainer.TranslatePoint(new Point(0, 0), this);
+        int left = windRect.Left + (int)Math.Round(contentOffsetDip.X * dpiScaleX);
+        int top = windRect.Top + (int)Math.Round(contentOffsetDip.Y * dpiScaleY);
+        int width = Math.Max(1, (int)Math.Round(widthDip * dpiScaleX));
+        int height = Math.Max(1, (int)Math.Round(heightDip * dpiScaleY));
+
+        bounds = new NativeMethods.RECT
+        {
+            Left = left,
+            Top = top,
+            Right = left + width,
+            Bottom = top + height
+        };
         return true;
     }
 }
